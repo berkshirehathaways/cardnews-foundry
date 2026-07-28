@@ -4,6 +4,7 @@ import {
   freshCreateOutcomePassed,
   selectForwardContextSpecs,
 } from "../../scripts/qa-forward.mjs";
+import { selectWorkspaceCompletion } from "../../scripts/qa-job-oracle.mjs";
 
 const completedChecks = {
   statusExit: true,
@@ -139,4 +140,23 @@ test("Given an accepted fresh-create job without a completed package, When its F
 
   // Then
   assert.equal(passed, false);
+});
+
+test("Given one complete package beside safe visual-boundary attempts, When workspace completion is selected, Then the package wins", () => {
+  const completion = selectWorkspaceCompletion([
+    { job: "boundary-a", passed: true, checks: { packageComplete: false } },
+    { job: "complete", passed: true, checks: { packageComplete: true } },
+    { job: "boundary-b", passed: true, checks: { packageComplete: false } },
+  ]);
+
+  assert.deepEqual(completion, { passed: true, completedJob: "complete" });
+});
+
+test("Given two complete packages, When workspace completion is selected, Then ambiguity fails closed", () => {
+  const completion = selectWorkspaceCompletion([
+    { job: "complete-a", passed: true, checks: { packageComplete: true } },
+    { job: "complete-b", passed: true, checks: { packageComplete: true } },
+  ]);
+
+  assert.deepEqual(completion, { passed: false, completedJob: "complete-a" });
 });

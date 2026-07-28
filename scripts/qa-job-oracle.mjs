@@ -141,10 +141,20 @@ export const inspectJobOutcome = async ({ runner, workspace, job }) => {
     packageBoundary: packaged.result.code === 6 &&
       packaged.output?.error?.class === "package" &&
       packaged.output.error.code === "VISUAL_VERDICT_MISSING",
+    packageComplete: packaged.result.code === 0 && stageIsValid(status.output, "package"),
   };
+  const requiredChecks = [
+    "statusExit",
+    "acceptedStages",
+    "sevenCurrentCards",
+    "contactSheet",
+    "renderInventoryCurrent",
+    "evaluationAccepted",
+  ];
   return {
     job: relativeJob,
-    passed: Object.values(checks).every(Boolean),
+    passed: requiredChecks.every((check) => checks[check]) &&
+      (checks.packageBoundary || checks.packageComplete),
     checks,
     inventoryError,
     cardCount: cardOrder.length,
@@ -155,6 +165,18 @@ export const inspectJobOutcome = async ({ runner, workspace, job }) => {
   };
 };
 
+export const selectWorkspaceCompletion = (candidates) => {
+  const complete = candidates.filter((candidate) =>
+    candidate.passed && candidate.checks.packageComplete);
+  const accepted = complete.length > 0
+    ? complete
+    : candidates.filter((candidate) => candidate.passed);
+  return {
+    passed: accepted.length === 1,
+    completedJob: accepted[0]?.job ?? null,
+  };
+};
+
 export const inspectWorkspaceOutcome = async ({ runner, workspace, job }) => {
   const jobs = job === undefined
     ? await readJobDirectories(workspace)
@@ -162,10 +184,9 @@ export const inspectWorkspaceOutcome = async ({ runner, workspace, job }) => {
   const candidates = await Promise.all(jobs.map(
     (candidate) => inspectJobOutcome({ runner, workspace, job: candidate }),
   ));
-  const completed = candidates.filter((candidate) => candidate.passed);
+  const completion = selectWorkspaceCompletion(candidates);
   return {
-    passed: completed.length === 1,
-    completedJob: completed[0]?.job ?? null,
+    ...completion,
     candidateCount: candidates.length,
     candidates,
   };
