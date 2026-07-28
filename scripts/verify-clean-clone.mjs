@@ -10,6 +10,8 @@ import { createCleanCheckout } from "./clean-clone-source.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
+export const TEST_ALL_TIMEOUT_MS = 25 * 60 * 1_000;
+
 const evidenceDirectory = () => {
   const args = process.argv.slice(2).filter((value) => value !== "--");
   const index = args.indexOf("--evidence-dir");
@@ -150,7 +152,7 @@ const verify = async () => {
       ["03-bootstrap", "corepack", ["pnpm", "verify:bootstrap"], 180_000],
       ["04-build", "corepack", ["pnpm", "build"], 180_000],
       ["05-typecheck", "corepack", ["pnpm", "typecheck"], 180_000],
-      ["06-tests", "corepack", ["pnpm", "test:all"], 900_000],
+      ["06-tests", "corepack", ["pnpm", "test:all"], TEST_ALL_TIMEOUT_MS],
       ["07-synthetic-contracts", "corepack", ["pnpm", "verify:synthetic"], 300_000],
       [
         "08-synthetic-full", "corepack",

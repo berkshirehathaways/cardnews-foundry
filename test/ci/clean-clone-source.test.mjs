@@ -8,7 +8,10 @@ import {
   CleanCloneError,
   createCleanCheckout,
 } from "../../scripts/clean-clone-source.mjs";
-import { publishArtifact } from "../../scripts/verify-clean-clone.mjs";
+import {
+  publishArtifact,
+  TEST_ALL_TIMEOUT_MS,
+} from "../../scripts/verify-clean-clone.mjs";
 
 const git = (root, ...args) => {
   const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
@@ -23,6 +26,10 @@ const writeFixture = async (root) => {
   await writeFile(path.join(root, "bin", "tool"), "#!/bin/sh\nexit 0\n");
   await chmod(path.join(root, "bin", "tool"), 0o755);
 };
+
+test("Given the complete test matrix runs on a slower CI host, When its clean-clone timeout is audited, Then it has a bounded 25-minute budget", () => {
+  assert.equal(TEST_ALL_TIMEOUT_MS, 25 * 60 * 1_000);
+});
 
 test("Given an unborn repository with ignored private residue, When a clean checkout is created, Then source files and executable bits survive while residue is absent", async (context) => {
   // Given
