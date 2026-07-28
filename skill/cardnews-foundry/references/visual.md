@@ -24,4 +24,13 @@ Use two independent reviews:
 1. Pass A checks completeness, dimensions, fonts, overflow signals, reusable layout structure, and design-system consistency.
 2. Pass B opens every card and the contact sheet to inspect Korean line breaks, clipping, typography, hierarchy, pacing, and cross-card consistency.
 
-Require both reviews to reference the same current render set and complete capture set. Any missing card, stale evidence, blocking clipping, broken Korean phrase, or inconsistent digest fails regardless of aggregate score.
+Prefer separate Codex reviewers when available. Without that capability, keep the
+passes methodologically independent: complete Pass A first, then restart from the
+raw captures for Pass B without copying Pass A's findings. Record two truthful,
+distinct Codex reviewer IDs and verdict IDs. Do not stop at a missing-verdict
+package response when the user asked for a finished ZIP.
+
+Require both reviews to reference the same current render set, source revision,
+evidence paths, capture timestamp, and complete capture set. Any missing card,
+stale evidence, blocking clipping, broken Korean phrase, or inconsistent digest
+fails regardless of aggregate score.

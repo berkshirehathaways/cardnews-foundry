@@ -63,8 +63,13 @@ Keep the dependency order:
 4. Obtain two fresh, independent read-only visual reviews over the same complete render set:
    - Pass A: functional integrity and design-system consistency.
    - Pass B: visual quality, Korean semantic line breaks, clipping, hierarchy, and consistency.
+   - Prefer two fresh Codex subagents when the runtime exposes them. Otherwise run
+     two separately scoped passes yourself: finish and record Pass A, then inspect
+     the raw complete capture set again for Pass B without reusing Pass A's
+     conclusions. Use distinct reviewer and verdict IDs that truthfully identify
+     the two Codex passes; never claim a human or external adapter reviewed them.
 5. Repair blocking product findings, rerender, recapture, and repeat both reviews. Repair evidence failures without changing product files.
-6. Save each normalized review as a `VisualVerdictRecord`, then run `package --visual-pass-a <pass-a.json> --visual-pass-b <pass-b.json>`. Packaging revalidates both verdicts against the current render, capture, and source identities.
+6. Save each normalized review as a `VisualVerdictRecord`, then run `package --visual-pass-a <pass-a.json> --visual-pass-b <pass-b.json>`. Packaging revalidates both verdicts against the current render, capture, and source identities. `VISUAL_VERDICT_MISSING` is a next action, not a terminal blocker: create the two current records and retry packaging in the same turn when the user requested a finished cardnews.
 7. Return the CLI-provided ZIP and contact-sheet paths only after package and release gates pass. Never assemble or alter the ZIP by hand.
 
 ## Recover
