@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { chmod, lstat, mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdir, mkdtemp, readFile, readdir, realpath, rm, stat, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -13,6 +13,7 @@ import {
   createCleanCloneCommands,
   createCleanCloneTemporaryRoot,
   createIsolatedEnvironment,
+  createShortTemporaryRoot,
   invokeBounded,
   publishArtifact,
   publishText,
@@ -50,8 +51,9 @@ test("Given the runtime clean-clone command table, When its CI budget is audited
   const commandBudget = commands.reduce((total, command) => total + command[3], 0);
 
   assert.deepEqual(testCommand, [
-    "06-tests", "corepack", ["pnpm", "test:all"], 25 * 60 * 1_000,
+    "06-tests", "/isolated/corepack", ["pnpm", "test:all"], 25 * 60 * 1_000,
   ]);
+  assert.equal(commands[0][1], "/isolated/corepack");
   assert.ok(
     workflowMinutes * 60 * 1_000 >= commandBudget + CLEAN_CLONE_SETUP_RESERVE_MS,
     "workflow timeout must cover every child timeout plus action setup reserve",
@@ -61,7 +63,7 @@ test("Given the runtime clean-clone command table, When its CI budget is audited
 test("Given a caller environment containing secrets, When the clean-clone environment is built, Then only non-secret execution metadata survives under isolated roots", () => {
   const environment = createIsolatedEnvironment({
     source: {
-      PATH: "/usr/bin",
+      PATH: "/attacker-controlled/bin",
       CI: "true",
       GITHUB_ACTIONS: "true",
       SECRET_TOKEN: "must-not-cross",
@@ -69,10 +71,15 @@ test("Given a caller environment containing secrets, When the clean-clone enviro
       HOME: "/Users/private",
     },
     isolatedRoot: "/isolated",
+    nodeExecutable: "/trusted/node/bin/node",
     platform: "linux",
   });
 
-  assert.equal(environment.PATH, "/usr/bin");
+  assert.equal(
+    environment.PATH,
+    ["/trusted/node/bin", "/usr/local/bin", "/usr/bin", "/bin"].join(path.delimiter),
+  );
+  assert.doesNotMatch(environment.PATH, /attacker-controlled/u);
   assert.equal(environment.CI, "true");
   assert.equal(environment.GITHUB_ACTIONS, "true");
   assert.equal(environment.SECRET_TOKEN, undefined);
@@ -81,12 +88,26 @@ test("Given a caller environment containing secrets, When the clean-clone enviro
   assert.equal(environment.TMPDIR, path.join("/isolated", "tmp"));
 });
 
-test("Given a POSIX verifier that creates Unix sockets below TMPDIR, When the clean-clone root is allocated, Then the full socket path stays below the portable 104-byte boundary", async (context) => {
-  const temporaryRoot = await createCleanCloneTemporaryRoot({ platform: "darwin" });
-  context.after(() => rm(temporaryRoot, { recursive: true, force: true }));
+test("Given a POSIX verifier under a custom temp policy, When the workspace and socket roots are allocated, Then executables honor the policy while sockets stay below 104 bytes", async (context) => {
+  const policyRoot = await mkdtemp(path.join(os.tmpdir(), "cardnews-policy-"));
+  const temporaryRoot = await createCleanCloneTemporaryRoot({
+    systemTemporaryDirectory: policyRoot,
+  });
+  const policyTemporaryDirectory = path.join(temporaryRoot, "isolated", "tmp");
+  await mkdir(policyTemporaryDirectory, { recursive: true });
+  const shortTemporaryRoot = await createShortTemporaryRoot({
+    platform: "darwin",
+    target: policyTemporaryDirectory,
+  });
+  context.after(() => Promise.all([
+    rm(policyRoot, { recursive: true, force: true }),
+    rm(shortTemporaryRoot.root, { recursive: true, force: true }),
+  ]));
   const environment = createIsolatedEnvironment({
     source: { PATH: process.env.PATH },
     isolatedRoot: path.join(temporaryRoot, "isolated"),
+    temporaryDirectory: shortTemporaryRoot.temporaryDirectory,
+    nodeExecutable: "/trusted/node/bin/node",
     platform: "darwin",
   });
   const socketPath = path.join(
@@ -95,6 +116,13 @@ test("Given a POSIX verifier that creates Unix sockets below TMPDIR, When the cl
     "socket.md",
   );
 
+  assert.equal(temporaryRoot.startsWith(`${policyRoot}${path.sep}`), true);
+  assert.equal(environment.PLAYWRIGHT_BROWSERS_PATH.startsWith(`${temporaryRoot}${path.sep}`), true);
+  assert.equal(environment.TMPDIR, shortTemporaryRoot.temporaryDirectory);
+  assert.equal(
+    await realpath(shortTemporaryRoot.temporaryDirectory),
+    await realpath(policyTemporaryDirectory),
+  );
   assert.ok(Buffer.byteLength(socketPath) < 104, socketPath);
 });
 
@@ -108,6 +136,7 @@ test("Given a child that ignores graceful termination, When its deadline expires
     env: createIsolatedEnvironment({
       source: { PATH: process.env.PATH },
       isolatedRoot: path.join(os.tmpdir(), "cardnews-invoke-test"),
+      nodeExecutable: process.execPath,
       platform: process.platform,
     }),
     timeoutMs: 100,
@@ -129,6 +158,7 @@ test("Given a child that floods output, When the combined output limit is exceed
     env: createIsolatedEnvironment({
       source: { PATH: process.env.PATH },
       isolatedRoot: path.join(os.tmpdir(), "cardnews-output-test"),
+      nodeExecutable: process.execPath,
       platform: process.platform,
     }),
     timeoutMs: 5_000,

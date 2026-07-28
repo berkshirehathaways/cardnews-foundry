@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
 import {
-  access, copyFile, mkdir, mkdtemp, readFile, rename, rm, writeFile,
+  access, copyFile, mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile,
 } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -17,12 +17,28 @@ const defaultMaxOutputBytes = 16 * 1024 * 1024;
 export const CLEAN_CLONE_SETUP_RESERVE_MS = 15 * minute;
 
 export const createCleanCloneTemporaryRoot = ({
-  platform = process.platform,
   systemTemporaryDirectory = os.tmpdir(),
 } = {}) => mkdtemp(path.join(
-  platform === "win32" ? systemTemporaryDirectory : "/tmp",
+  systemTemporaryDirectory,
   "cardnews-clean-clone-",
 ));
+
+export const createShortTemporaryRoot = async ({
+  platform = process.platform,
+  target,
+  shortBase = "/tmp",
+}) => {
+  if (platform === "win32") return { root: undefined, temporaryDirectory: target };
+  const root = await mkdtemp(path.join(shortBase, "cardnews-socket-"));
+  const temporaryDirectory = path.join(root, "t");
+  try {
+    await symlink(target, temporaryDirectory);
+    return { root, temporaryDirectory };
+  } catch (error) {
+    await rm(root, { recursive: true, force: true });
+    throw error;
+  }
+};
 
 const evidenceDirectory = () => {
   const args = process.argv.slice(2).filter((value) => value !== "--");
@@ -173,24 +189,34 @@ export const publishText = async (value, destination) => {
 export const createIsolatedEnvironment = ({
   source = process.env,
   isolatedRoot,
+  temporaryDirectory = path.join(isolatedRoot, "tmp"),
+  nodeExecutable = process.execPath,
   platform = process.platform,
 }) => {
   const environment = {};
   const allowed = platform === "win32"
-    ? ["PATH", "CI", "GITHUB_ACTIONS", "RUNNER_OS", "RUNNER_ARCH", "SYSTEMROOT", "COMSPEC", "PATHEXT", "WINDIR"]
-    : ["PATH", "CI", "GITHUB_ACTIONS", "RUNNER_OS", "RUNNER_ARCH"];
+    ? ["CI", "GITHUB_ACTIONS", "RUNNER_OS", "RUNNER_ARCH", "SYSTEMROOT", "COMSPEC", "PATHEXT", "WINDIR"]
+    : ["CI", "GITHUB_ACTIONS", "RUNNER_OS", "RUNNER_ARCH"];
   for (const name of allowed) {
     if (source[name] !== undefined) environment[name] = source[name];
   }
   const home = path.join(isolatedRoot, "home");
-  const temporary = path.join(isolatedRoot, "tmp");
+  const executableDirectory = path.dirname(nodeExecutable);
+  const safePath = platform === "win32"
+    ? [
+      executableDirectory,
+      path.join(source.SYSTEMROOT ?? "C:\\Windows", "System32"),
+      source.SYSTEMROOT ?? "C:\\Windows",
+    ].join(path.delimiter)
+    : [executableDirectory, "/usr/local/bin", "/usr/bin", "/bin"].join(path.delimiter);
   return {
     ...environment,
+    PATH: safePath,
     HOME: home,
     USERPROFILE: home,
-    TMPDIR: temporary,
-    TMP: temporary,
-    TEMP: temporary,
+    TMPDIR: temporaryDirectory,
+    TMP: temporaryDirectory,
+    TEMP: temporaryDirectory,
     COREPACK_HOME: path.join(isolatedRoot, "corepack"),
     PNPM_HOME: path.join(isolatedRoot, "pnpm"),
     XDG_CACHE_HOME: path.join(isolatedRoot, "cache"),
@@ -210,33 +236,37 @@ export const createCleanCloneCommands = ({
   platform = process.platform,
   nodeExecutable = process.execPath,
 }) => {
+  const corepackExecutable = path.join(
+    path.dirname(nodeExecutable),
+    platform === "win32" ? "corepack.cmd" : "corepack",
+  );
   const commands = [
-    ["01-frozen-install", "corepack", ["pnpm", "install", "--frozen-lockfile"], 10 * minute],
+    ["01-frozen-install", corepackExecutable, ["pnpm", "install", "--frozen-lockfile"], 10 * minute],
     [
-      "02-browser-install", "corepack",
+      "02-browser-install", corepackExecutable,
       ["pnpm", "exec", "playwright", "install", ...(platform === "linux" ? ["--with-deps"] : []), "chromium"],
       15 * minute,
     ],
-    ["03-bootstrap", "corepack", ["pnpm", "verify:bootstrap"], 3 * minute],
-    ["04-build", "corepack", ["pnpm", "build"], 3 * minute],
-    ["05-typecheck", "corepack", ["pnpm", "typecheck"], 3 * minute],
-    ["06-tests", "corepack", ["pnpm", "test:all"], 25 * minute],
-    ["07-synthetic-contracts", "corepack", ["pnpm", "verify:synthetic"], 5 * minute],
+    ["03-bootstrap", corepackExecutable, ["pnpm", "verify:bootstrap"], 3 * minute],
+    ["04-build", corepackExecutable, ["pnpm", "build"], 3 * minute],
+    ["05-typecheck", corepackExecutable, ["pnpm", "typecheck"], 3 * minute],
+    ["06-tests", corepackExecutable, ["pnpm", "test:all"], 25 * minute],
+    ["07-synthetic-contracts", corepackExecutable, ["pnpm", "verify:synthetic"], 5 * minute],
     [
-      "08-synthetic-full", "corepack",
+      "08-synthetic-full", corepackExecutable,
       ["pnpm", "verify:synthetic-full", "--", "--output-dir", artifacts],
       8 * minute,
     ],
-    ["09-two-canonical-renders", "corepack", ["pnpm", "verify:determinism"], 8 * minute],
-    ["10-skill-validation", "corepack", ["pnpm", "verify:skill"], minute],
-    ["10a-skill-lifecycle-tests", "corepack", ["pnpm", "test:skill"], 5 * minute],
+    ["09-two-canonical-renders", corepackExecutable, ["pnpm", "verify:determinism"], 8 * minute],
+    ["10-skill-validation", corepackExecutable, ["pnpm", "verify:skill"], minute],
+    ["10a-skill-lifecycle-tests", corepackExecutable, ["pnpm", "test:skill"], 5 * minute],
     [
-      "11-skill-install", "corepack",
+      "11-skill-install", corepackExecutable,
       ["pnpm", "skill:install", "--", "--target", skillTarget],
       minute,
     ],
     [
-      "12-skill-discovery", "corepack",
+      "12-skill-discovery", corepackExecutable,
       ["pnpm", "skill:status", "--", "--target", skillTarget],
       minute,
     ],
@@ -246,7 +276,7 @@ export const createCleanCloneCommands = ({
       minute,
     ],
     [
-      "14-release-dry-run", "corepack",
+      "14-release-dry-run", corepackExecutable,
       [
         "pnpm", "verify:release", "--", "--dry-run",
         "--package", path.join(artifacts, "synthetic-cardnews.zip"),
@@ -256,7 +286,7 @@ export const createCleanCloneCommands = ({
     ],
   ];
   if (hasLint) {
-    commands.splice(3, 0, ["03a-lint", "corepack", ["pnpm", "lint"], 3 * minute]);
+    commands.splice(3, 0, ["03a-lint", corepackExecutable, ["pnpm", "lint"], 3 * minute]);
   }
   return commands;
 };
@@ -264,6 +294,7 @@ export const createCleanCloneCommands = ({
 const verify = async () => {
   const requestedEvidence = evidenceDirectory();
   const temporaryRoot = await createCleanCloneTemporaryRoot();
+  let shortTemporaryRoot = { root: undefined, temporaryDirectory: undefined };
   const durableRoot = requestedEvidence ?? path.join(temporaryRoot, "evidence");
   const logs = path.join(durableRoot, "logs");
   await mkdir(logs, { recursive: true });
@@ -294,12 +325,19 @@ const verify = async () => {
     const artifacts = path.join(temporaryRoot, "artifacts");
     const skillTarget = path.join(isolatedRoot, "codex", "skills", "cardnews-foundry");
     const sourceArchive = path.join(artifacts, "source-archive.zip");
-    const environment = createIsolatedEnvironment({ isolatedRoot });
+    const policyTemporaryDirectory = path.join(isolatedRoot, "tmp");
     await Promise.all([
       mkdir(artifacts),
-      mkdir(environment.HOME, { recursive: true }),
-      mkdir(environment.TMPDIR, { recursive: true }),
+      mkdir(path.join(isolatedRoot, "home"), { recursive: true }),
+      mkdir(policyTemporaryDirectory, { recursive: true }),
     ]);
+    shortTemporaryRoot = await createShortTemporaryRoot({
+      target: policyTemporaryDirectory,
+    });
+    const environment = createIsolatedEnvironment({
+      isolatedRoot,
+      temporaryDirectory: shortTemporaryRoot.temporaryDirectory,
+    });
     summary.isolation = {
       checkoutInitiallyExcludedResidue: exclusionsAbsent,
       cachesRootedInTemporaryDirectory: true,
@@ -307,6 +345,9 @@ const verify = async () => {
       skillRootedInTemporaryDirectory: true,
       environmentAllowlisted: true,
       homeRootedInTemporaryDirectory: true,
+      pathRebuiltFromTrustedNode: true,
+      socketTemporaryPathShortened: true,
+      socketTemporaryStorageRootedInPolicyDirectory: true,
     };
     const manifest = JSON.parse(await readFile(path.join(prepared.checkoutRoot, "package.json"), "utf8"));
     const commands = createCleanCloneCommands({
@@ -359,8 +400,14 @@ const verify = async () => {
     }
     summary.ok = true;
   } finally {
-    await rm(temporaryRoot, { recursive: true, force: true });
+    await Promise.all([
+      rm(temporaryRoot, { recursive: true, force: true }),
+      shortTemporaryRoot.root === undefined
+        ? Promise.resolve()
+        : rm(shortTemporaryRoot.root, { recursive: true, force: true }),
+    ]);
     summary.cleanup.removed = true;
+    summary.cleanup.shortTemporaryRootRemoved = true;
     if (requestedEvidence !== undefined) {
       await publishText(
         `${JSON.stringify(summary, null, 2)}\n`,

@@ -27,7 +27,7 @@ const prepareRepo = async (withHead) => {
 const createRunner = ({ headExists, headSha, cleanCloneSummary }) => {
   const calls = [];
   const run = async (command, args, options = {}) => {
-    calls.push({ command, args, cwd: options.cwd });
+    calls.push({ command, args, cwd: options.cwd, timeoutMs: options.timeoutMs });
     if (command === "git" && args[0] === "rev-parse" && args[1] === "--verify" && args[2] === "HEAD") {
       return headExists
         ? { code: 0, stdout: `${headSha}\n`, stderr: "" }
@@ -109,6 +109,7 @@ test("runReleaseQa binds an unborn repository to the injected SHA and writes evi
   assert.equal(report.gates.at(-1), "14-release-dry-run");
   assert.equal(await import("node:fs/promises").then(({ readFile }) => readFile(path.join(evidenceRoot, "qa-release.json"), "utf8")).then((text) => JSON.parse(text).sha), injectedSha);
   assert.equal(calls[0].command, "git");
+  assert.equal(calls.find((call) => call.command === "corepack")?.timeoutMs, 120 * 60 * 1_000);
 });
 
 test("runReleaseQa replaces a symlinked JSON report without changing its target", async (context) => {

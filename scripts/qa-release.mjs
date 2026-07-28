@@ -9,6 +9,7 @@ import { publishText } from "./verify-clean-clone.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const execFile = promisify(execFileCallback);
+const cleanCloneOuterTimeoutMs = 120 * 60 * 1_000;
 
 export class ReleaseQaError extends Error {
   constructor(code, message, details) {
@@ -60,6 +61,7 @@ const runCommand = async (command, args, options = {}) => {
       env: options.env ?? process.env,
       encoding: "utf8",
       maxBuffer: 16 * 1024 * 1024,
+      timeout: options.timeoutMs,
     });
     return {
       code: 0,
@@ -105,7 +107,7 @@ export const runReleaseQa = async ({
   const cleanCloneEvidenceRoot = path.join(resolvedEvidenceRoot, "clean-clone");
   const cleanClone = await run("corepack", [
     "pnpm", "verify:clean-clone", "--", "--evidence-dir", cleanCloneEvidenceRoot,
-  ], { cwd: repositoryRoot });
+  ], { cwd: repositoryRoot, timeoutMs: cleanCloneOuterTimeoutMs });
   if (cleanClone.code !== 0) {
     throw new ReleaseQaError("QA_RELEASE_CLEAN_CLONE_FAILED", "verify:clean-clone failed");
   }
