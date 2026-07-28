@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { lstat, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
@@ -109,6 +109,35 @@ test("runReleaseQa binds an unborn repository to the injected SHA and writes evi
   assert.equal(report.gates.at(-1), "14-release-dry-run");
   assert.equal(await import("node:fs/promises").then(({ readFile }) => readFile(path.join(evidenceRoot, "qa-release.json"), "utf8")).then((text) => JSON.parse(text).sha), injectedSha);
   assert.equal(calls[0].command, "git");
+});
+
+test("runReleaseQa replaces a symlinked JSON report without changing its target", async (context) => {
+  const root = await prepareRepo(false);
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const evidenceRoot = path.join(root, "evidence");
+  await import("node:fs/promises").then(({ mkdir }) => mkdir(evidenceRoot));
+  const target = path.join(root, "attacker-target.json");
+  const reportPath = path.join(evidenceRoot, "qa-release.json");
+  await writeFile(target, "attacker-owned bytes");
+  await symlink(target, reportPath);
+  const { run } = createRunner({
+    headExists: false,
+    headSha: "unused",
+    cleanCloneSummary: {
+      ok: true,
+      source: { mode: "pre-head-snapshot", commit: "snapshotsha" },
+      isolation: { cachesRootedInTemporaryDirectory: true },
+      artifacts: { sourceArchiveSha256: "00".repeat(32) },
+      commands: [{ label: "14-release-dry-run" }],
+      cleanup: { removed: true },
+    },
+  });
+
+  await runReleaseQa({ evidenceRoot, sha: injectedSha, run });
+
+  assert.equal(await readFile(target, "utf8"), "attacker-owned bytes");
+  assert.equal((await lstat(reportPath)).isSymbolicLink(), false);
+  assert.equal(JSON.parse(await readFile(reportPath, "utf8")).sha, injectedSha);
 });
 
 test("runReleaseQa binds a repository with HEAD to the exact commit SHA and rejects mismatched injection", async (context) => {

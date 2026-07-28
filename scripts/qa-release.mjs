@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 import { execFile as execFileCallback } from "node:child_process";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import { publishText } from "./verify-clean-clone.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const execFile = promisify(execFileCallback);
@@ -143,7 +144,10 @@ export const runReleaseQa = async ({
       : [],
   };
 
-  await writeFile(path.join(resolvedEvidenceRoot, "qa-release.json"), `${JSON.stringify(report, null, 2)}\n`);
+  await publishText(
+    `${JSON.stringify(report, null, 2)}\n`,
+    path.join(resolvedEvidenceRoot, "qa-release.json"),
+  );
   return report;
 };
 

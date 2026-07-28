@@ -9,9 +9,16 @@ import {
   createCleanCheckout,
 } from "../../scripts/clean-clone-source.mjs";
 import {
+  CLEAN_CLONE_SETUP_RESERVE_MS,
+  createCleanCloneCommands,
+  createIsolatedEnvironment,
+  invokeBounded,
   publishArtifact,
-  TEST_ALL_TIMEOUT_MS,
+  publishText,
 } from "../../scripts/verify-clean-clone.mjs";
+
+const repositoryRoot = path.resolve(import.meta.dirname, "../..");
+const workflowPath = path.join(repositoryRoot, ".github", "workflows", "ci.yml");
 
 const git = (root, ...args) => {
   const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
@@ -27,8 +34,92 @@ const writeFixture = async (root) => {
   await chmod(path.join(root, "bin", "tool"), 0o755);
 };
 
-test("Given the complete test matrix runs on a slower CI host, When its clean-clone timeout is audited, Then it has a bounded 25-minute budget", () => {
-  assert.equal(TEST_ALL_TIMEOUT_MS, 25 * 60 * 1_000);
+test("Given the runtime clean-clone command table, When its CI budget is audited, Then the 25-minute test step and every command fit inside the workflow deadline", async () => {
+  const commands = createCleanCloneCommands({
+    artifacts: "/isolated/artifacts",
+    skillTarget: "/isolated/skill",
+    sourceArchive: "/isolated/source.zip",
+    hasLint: true,
+    platform: "linux",
+    nodeExecutable: "/isolated/node",
+  });
+  const testCommand = commands.find(([label]) => label === "06-tests");
+  const workflow = await readFile(workflowPath, "utf8");
+  const workflowMinutes = Number(workflow.match(/^\s+timeout-minutes:\s*(\d+)$/mu)?.[1]);
+  const commandBudget = commands.reduce((total, command) => total + command[3], 0);
+
+  assert.deepEqual(testCommand, [
+    "06-tests", "corepack", ["pnpm", "test:all"], 25 * 60 * 1_000,
+  ]);
+  assert.ok(
+    workflowMinutes * 60 * 1_000 >= commandBudget + CLEAN_CLONE_SETUP_RESERVE_MS,
+    "workflow timeout must cover every child timeout plus action setup reserve",
+  );
+});
+
+test("Given a caller environment containing secrets, When the clean-clone environment is built, Then only non-secret execution metadata survives under isolated roots", () => {
+  const environment = createIsolatedEnvironment({
+    source: {
+      PATH: "/usr/bin",
+      CI: "true",
+      GITHUB_ACTIONS: "true",
+      SECRET_TOKEN: "must-not-cross",
+      AWS_SECRET_ACCESS_KEY: "must-not-cross",
+      HOME: "/Users/private",
+    },
+    isolatedRoot: "/isolated",
+    platform: "linux",
+  });
+
+  assert.equal(environment.PATH, "/usr/bin");
+  assert.equal(environment.CI, "true");
+  assert.equal(environment.GITHUB_ACTIONS, "true");
+  assert.equal(environment.SECRET_TOKEN, undefined);
+  assert.equal(environment.AWS_SECRET_ACCESS_KEY, undefined);
+  assert.equal(environment.HOME, path.join("/isolated", "home"));
+  assert.equal(environment.TMPDIR, path.join("/isolated", "tmp"));
+});
+
+test("Given a child that ignores graceful termination, When its deadline expires, Then the verifier escalates to a hard bounded stop", { skip: process.platform === "win32" }, async () => {
+  const startedAt = Date.now();
+  const result = await invokeBounded(process.execPath, [
+    "-e",
+    "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000)",
+  ], {
+    cwd: repositoryRoot,
+    env: createIsolatedEnvironment({
+      source: { PATH: process.env.PATH },
+      isolatedRoot: path.join(os.tmpdir(), "cardnews-invoke-test"),
+      platform: process.platform,
+    }),
+    timeoutMs: 100,
+    hardKillGraceMs: 100,
+    maxOutputBytes: 1024,
+  });
+
+  assert.equal(result.timedOut, true);
+  assert.equal(result.signal, "SIGKILL");
+  assert.ok(Date.now() - startedAt < 2_000);
+});
+
+test("Given a child that floods output, When the combined output limit is exceeded, Then capture stays bounded and the child is stopped", async () => {
+  const result = await invokeBounded(process.execPath, [
+    "-e",
+    "process.stdout.write('x'.repeat(8192)); setInterval(() => {}, 1000)",
+  ], {
+    cwd: repositoryRoot,
+    env: createIsolatedEnvironment({
+      source: { PATH: process.env.PATH },
+      isolatedRoot: path.join(os.tmpdir(), "cardnews-output-test"),
+      platform: process.platform,
+    }),
+    timeoutMs: 5_000,
+    hardKillGraceMs: 100,
+    maxOutputBytes: 1024,
+  });
+
+  assert.equal(result.outputLimitExceeded, true);
+  assert.ok(Buffer.byteLength(result.stdout) + Buffer.byteLength(result.stderr) <= 1024);
 });
 
 test("Given an unborn repository with ignored private residue, When a clean checkout is created, Then source files and executable bits survive while residue is absent", async (context) => {
@@ -148,6 +239,23 @@ test("Given an attacker-controlled evidence symlink, When publication reruns, Th
 
   // Then
   assert.deepEqual(await readFile(destination), expected);
+  assert.equal(await readFile(target, "utf8"), "attacker-owned bytes");
+  assert.equal((await lstat(destination)).isSymbolicLink(), false);
+  assert.deepEqual((await readdir(root)).filter((entry) => entry.startsWith(".publish-")), []);
+});
+
+test("Given an attacker-controlled JSON evidence symlink, When text publication reruns, Then it replaces the link without changing its target", async (context) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "cardnews-clean-publish-"));
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const destination = path.join(root, "qa-release.json");
+  const target = path.join(root, "attacker-target.json");
+  const expected = "{\"ok\":true}\n";
+  await writeFile(target, "attacker-owned bytes");
+  await symlink(target, destination);
+
+  await publishText(expected, destination);
+
+  assert.equal(await readFile(destination, "utf8"), expected);
   assert.equal(await readFile(target, "utf8"), "attacker-owned bytes");
   assert.equal((await lstat(destination)).isSymbolicLink(), false);
   assert.deepEqual((await readdir(root)).filter((entry) => entry.startsWith(".publish-")), []);

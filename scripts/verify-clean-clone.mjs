@@ -10,7 +10,11 @@ import { createCleanCheckout } from "./clean-clone-source.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-export const TEST_ALL_TIMEOUT_MS = 25 * 60 * 1_000;
+const minute = 60 * 1_000;
+const defaultHardKillGraceMs = 10_000;
+const defaultMaxOutputBytes = 16 * 1024 * 1024;
+
+export const CLEAN_CLONE_SETUP_RESERVE_MS = 15 * minute;
 
 const evidenceDirectory = () => {
   const args = process.argv.slice(2).filter((value) => value !== "--");
@@ -23,26 +27,75 @@ const evidenceDirectory = () => {
   return path.resolve(value);
 };
 
-const invoke = (command, args, options) => new Promise((resolve, reject) => {
+const signalChild = (child, signal, platform) => {
+  try {
+    if (platform !== "win32" && child.pid !== undefined) {
+      process.kill(-child.pid, signal);
+    } else {
+      child.kill(signal);
+    }
+  } catch (error) {
+    if (!(error instanceof Error && error.code === "ESRCH")) throw error;
+  }
+};
+
+export const invokeBounded = (command, args, options) => new Promise((resolve, reject) => {
+  const platform = options.platform ?? process.platform;
+  const hardKillGraceMs = options.hardKillGraceMs ?? defaultHardKillGraceMs;
+  const maxOutputBytes = options.maxOutputBytes ?? defaultMaxOutputBytes;
   const child = spawn(command, args, {
     cwd: options.cwd,
     env: options.env,
+    detached: platform !== "win32",
     stdio: ["ignore", "pipe", "pipe"],
   });
   const stdout = [];
   const stderr = [];
-  const timer = setTimeout(() => child.kill("SIGTERM"), options.timeoutMs);
-  child.stdout.on("data", (chunk) => stdout.push(chunk));
-  child.stderr.on("data", (chunk) => stderr.push(chunk));
+  let capturedBytes = 0;
+  let hardKillTimer;
+  let terminationStarted = false;
+  let timedOut = false;
+  let outputLimitExceeded = false;
+  const terminate = () => {
+    if (terminationStarted) return;
+    terminationStarted = true;
+    signalChild(child, "SIGTERM", platform);
+    hardKillTimer = setTimeout(
+      () => signalChild(child, "SIGKILL", platform),
+      hardKillGraceMs,
+    );
+  };
+  const capture = (target, chunk) => {
+    const remaining = Math.max(0, maxOutputBytes - capturedBytes);
+    if (remaining > 0) {
+      const captured = chunk.subarray(0, remaining);
+      target.push(captured);
+      capturedBytes += captured.byteLength;
+    }
+    if (chunk.byteLength > remaining) {
+      outputLimitExceeded = true;
+      terminate();
+    }
+  };
+  const timeoutTimer = setTimeout(() => {
+    timedOut = true;
+    terminate();
+  }, options.timeoutMs);
+  child.stdout.on("data", (chunk) => capture(stdout, chunk));
+  child.stderr.on("data", (chunk) => capture(stderr, chunk));
   child.once("error", (error) => {
-    clearTimeout(timer);
+    clearTimeout(timeoutTimer);
+    clearTimeout(hardKillTimer);
     reject(error);
   });
   child.once("close", (code, signal) => {
-    clearTimeout(timer);
+    clearTimeout(timeoutTimer);
+    clearTimeout(hardKillTimer);
     resolve({
       code: code ?? 1,
       signal,
+      timedOut,
+      outputLimitExceeded,
       stdout: Buffer.concat(stdout).toString("utf8"),
       stderr: Buffer.concat(stderr).toString("utf8"),
     });
@@ -51,7 +104,7 @@ const invoke = (command, args, options) => new Promise((resolve, reject) => {
 
 const run = async ({ label, command, args, checkoutRoot, environment, logs, timeoutMs }) => {
   const startedAt = new Date().toISOString();
-  const result = await invoke(command, args, {
+  const result = await invokeBounded(command, args, {
     cwd: checkoutRoot,
     env: environment,
     timeoutMs,
@@ -62,7 +115,13 @@ const run = async ({ label, command, args, checkoutRoot, environment, logs, time
     result.stderr,
     `exit=${result.code} signal=${result.signal ?? "none"}`,
   ].join("\n");
-  await writeFile(path.join(logs, `${label}.log`), log);
+  await publishText(log, path.join(logs, `${label}.log`));
+  if (result.timedOut) {
+    throw new Error(`${label} timed out after ${timeoutMs}ms`);
+  }
+  if (result.outputLimitExceeded) {
+    throw new Error(`${label} exceeded the ${defaultMaxOutputBytes}-byte output limit`);
+  }
   if (result.code !== 0) {
     throw new Error(`${label} failed with exit ${result.code}`);
   }
@@ -90,6 +149,108 @@ export const publishArtifact = async (source, destination) => {
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
   }
+};
+
+export const publishText = async (value, destination) => {
+  const temporaryDirectory = await mkdtemp(path.join(path.dirname(destination), ".publish-"));
+  const temporaryArtifact = path.join(temporaryDirectory, path.basename(destination));
+  try {
+    await writeFile(temporaryArtifact, value, { flag: "wx" });
+    await rename(temporaryArtifact, destination);
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+};
+
+export const createIsolatedEnvironment = ({
+  source = process.env,
+  isolatedRoot,
+  platform = process.platform,
+}) => {
+  const environment = {};
+  const allowed = platform === "win32"
+    ? ["PATH", "CI", "GITHUB_ACTIONS", "RUNNER_OS", "RUNNER_ARCH", "SYSTEMROOT", "COMSPEC", "PATHEXT", "WINDIR"]
+    : ["PATH", "CI", "GITHUB_ACTIONS", "RUNNER_OS", "RUNNER_ARCH"];
+  for (const name of allowed) {
+    if (source[name] !== undefined) environment[name] = source[name];
+  }
+  const home = path.join(isolatedRoot, "home");
+  const temporary = path.join(isolatedRoot, "tmp");
+  return {
+    ...environment,
+    HOME: home,
+    USERPROFILE: home,
+    TMPDIR: temporary,
+    TMP: temporary,
+    TEMP: temporary,
+    COREPACK_HOME: path.join(isolatedRoot, "corepack"),
+    PNPM_HOME: path.join(isolatedRoot, "pnpm"),
+    XDG_CACHE_HOME: path.join(isolatedRoot, "cache"),
+    XDG_CONFIG_HOME: path.join(isolatedRoot, "config"),
+    XDG_DATA_HOME: path.join(isolatedRoot, "data"),
+    XDG_STATE_HOME: path.join(isolatedRoot, "state"),
+    PLAYWRIGHT_BROWSERS_PATH: path.join(isolatedRoot, "playwright"),
+    CODEX_HOME: path.join(isolatedRoot, "codex"),
+  };
+};
+
+export const createCleanCloneCommands = ({
+  artifacts,
+  skillTarget,
+  sourceArchive,
+  hasLint,
+  platform = process.platform,
+  nodeExecutable = process.execPath,
+}) => {
+  const commands = [
+    ["01-frozen-install", "corepack", ["pnpm", "install", "--frozen-lockfile"], 10 * minute],
+    [
+      "02-browser-install", "corepack",
+      ["pnpm", "exec", "playwright", "install", ...(platform === "linux" ? ["--with-deps"] : []), "chromium"],
+      15 * minute,
+    ],
+    ["03-bootstrap", "corepack", ["pnpm", "verify:bootstrap"], 3 * minute],
+    ["04-build", "corepack", ["pnpm", "build"], 3 * minute],
+    ["05-typecheck", "corepack", ["pnpm", "typecheck"], 3 * minute],
+    ["06-tests", "corepack", ["pnpm", "test:all"], 25 * minute],
+    ["07-synthetic-contracts", "corepack", ["pnpm", "verify:synthetic"], 5 * minute],
+    [
+      "08-synthetic-full", "corepack",
+      ["pnpm", "verify:synthetic-full", "--", "--output-dir", artifacts],
+      8 * minute,
+    ],
+    ["09-two-canonical-renders", "corepack", ["pnpm", "verify:determinism"], 8 * minute],
+    ["10-skill-validation", "corepack", ["pnpm", "verify:skill"], minute],
+    ["10a-skill-lifecycle-tests", "corepack", ["pnpm", "test:skill"], 5 * minute],
+    [
+      "11-skill-install", "corepack",
+      ["pnpm", "skill:install", "--", "--target", skillTarget],
+      minute,
+    ],
+    [
+      "12-skill-discovery", "corepack",
+      ["pnpm", "skill:status", "--", "--target", skillTarget],
+      minute,
+    ],
+    [
+      "13-installed-runner", nodeExecutable,
+      [path.join(skillTarget, "scripts", "cardnews.mjs"), "--help"],
+      minute,
+    ],
+    [
+      "14-release-dry-run", "corepack",
+      [
+        "pnpm", "verify:release", "--", "--dry-run",
+        "--package", path.join(artifacts, "synthetic-cardnews.zip"),
+        "--archive-output", sourceArchive,
+      ],
+      5 * minute,
+    ],
+  ];
+  if (hasLint) {
+    commands.splice(3, 0, ["03a-lint", "corepack", ["pnpm", "lint"], 3 * minute]);
+  }
+  return commands;
 };
 
 const verify = async () => {
@@ -125,72 +286,27 @@ const verify = async () => {
     const artifacts = path.join(temporaryRoot, "artifacts");
     const skillTarget = path.join(isolatedRoot, "codex", "skills", "cardnews-foundry");
     const sourceArchive = path.join(artifacts, "source-archive.zip");
-    await Promise.all([mkdir(isolatedRoot), mkdir(artifacts)]);
-    const environment = {
-      ...process.env,
-      COREPACK_HOME: path.join(isolatedRoot, "corepack"),
-      PNPM_HOME: path.join(isolatedRoot, "pnpm"),
-      XDG_CACHE_HOME: path.join(isolatedRoot, "cache"),
-      XDG_DATA_HOME: path.join(isolatedRoot, "data"),
-      XDG_STATE_HOME: path.join(isolatedRoot, "state"),
-      PLAYWRIGHT_BROWSERS_PATH: path.join(isolatedRoot, "playwright"),
-      CODEX_HOME: path.join(isolatedRoot, "codex"),
-    };
+    const environment = createIsolatedEnvironment({ isolatedRoot });
+    await Promise.all([
+      mkdir(artifacts),
+      mkdir(environment.HOME, { recursive: true }),
+      mkdir(environment.TMPDIR, { recursive: true }),
+    ]);
     summary.isolation = {
       checkoutInitiallyExcludedResidue: exclusionsAbsent,
       cachesRootedInTemporaryDirectory: true,
       browserRootedInTemporaryDirectory: true,
       skillRootedInTemporaryDirectory: true,
+      environmentAllowlisted: true,
+      homeRootedInTemporaryDirectory: true,
     };
-    const commands = [
-      ["01-frozen-install", "corepack", ["pnpm", "install", "--frozen-lockfile"], 600_000],
-      [
-        "02-browser-install", "corepack",
-        ["pnpm", "exec", "playwright", "install", ...(process.platform === "linux" ? ["--with-deps"] : []), "chromium"],
-        900_000,
-      ],
-      ["03-bootstrap", "corepack", ["pnpm", "verify:bootstrap"], 180_000],
-      ["04-build", "corepack", ["pnpm", "build"], 180_000],
-      ["05-typecheck", "corepack", ["pnpm", "typecheck"], 180_000],
-      ["06-tests", "corepack", ["pnpm", "test:all"], TEST_ALL_TIMEOUT_MS],
-      ["07-synthetic-contracts", "corepack", ["pnpm", "verify:synthetic"], 300_000],
-      [
-        "08-synthetic-full", "corepack",
-        ["pnpm", "verify:synthetic-full", "--", "--output-dir", artifacts],
-        480_000,
-      ],
-      ["09-two-canonical-renders", "corepack", ["pnpm", "verify:determinism"], 480_000],
-      ["10-skill-validation", "corepack", ["pnpm", "verify:skill"], 60_000],
-      ["10a-skill-lifecycle-tests", "corepack", ["pnpm", "test:skill"], 300_000],
-      [
-        "11-skill-install", "corepack",
-        ["pnpm", "skill:install", "--", "--target", skillTarget],
-        60_000,
-      ],
-      [
-        "12-skill-discovery", "corepack",
-        ["pnpm", "skill:status", "--", "--target", skillTarget],
-        60_000,
-      ],
-      [
-        "13-installed-runner", process.execPath,
-        [path.join(skillTarget, "scripts", "cardnews.mjs"), "--help"],
-        60_000,
-      ],
-      [
-        "14-release-dry-run", "corepack",
-        [
-          "pnpm", "verify:release", "--", "--dry-run",
-          "--package", path.join(artifacts, "synthetic-cardnews.zip"),
-          "--archive-output", sourceArchive,
-        ],
-        300_000,
-      ],
-    ];
     const manifest = JSON.parse(await readFile(path.join(prepared.checkoutRoot, "package.json"), "utf8"));
-    if (typeof manifest.scripts?.lint === "string") {
-      commands.splice(3, 0, ["03a-lint", "corepack", ["pnpm", "lint"], 180_000]);
-    }
+    const commands = createCleanCloneCommands({
+      artifacts,
+      skillTarget,
+      sourceArchive,
+      hasLint: typeof manifest.scripts?.lint === "string",
+    });
     for (const [label, command, args, timeoutMs] of commands) {
       const result = await run({
         label, command, args, checkoutRoot: prepared.checkoutRoot,
@@ -238,7 +354,10 @@ const verify = async () => {
     await rm(temporaryRoot, { recursive: true, force: true });
     summary.cleanup.removed = true;
     if (requestedEvidence !== undefined) {
-      await writeFile(path.join(durableRoot, "clean-clone-summary.json"), `${JSON.stringify(summary, null, 2)}\n`);
+      await publishText(
+        `${JSON.stringify(summary, null, 2)}\n`,
+        path.join(durableRoot, "clean-clone-summary.json"),
+      );
     }
   }
   return summary;

@@ -73,6 +73,7 @@ test("Given the CI workflow, When its execution contract is audited, Then Node 2
   assert.match(workflow, /^concurrency:$/mu);
   assert.match(workflow, /^\s+timeout-minutes:\s*[1-9][0-9]*$/mu);
   assert.match(workflow, /^\s+node-version-file:\s*\.node-version$/mu);
+  assert.match(workflow, /^\s+ref:\s*\$\{\{\s*github\.sha\s*\}\}$/mu);
   assert.match(workflow, /^\s+run:\s*corepack enable$/mu);
   assert.match(workflow, /^\s+run:\s*corepack pnpm verify:clean-clone$/mu);
 });
