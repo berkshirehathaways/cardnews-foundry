@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
-import { execFile } from "node:child_process";
+import { execFile, spawnSync } from "node:child_process";
 import { once } from "node:events";
 import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 const jobs = await import("../../src/jobs/index.ts");
@@ -77,6 +78,35 @@ test("Given a records directory repeatedly swapped with a sibling symlink, When 
     // Then
     assert.deepEqual(await readdir(secondRecords), []);
   }
+});
+
+test("Given lock data cannot be durably synced, When exclusive creation fails, Then no final or temporary lock blocks retry", async (context) => {
+  // Given
+  const root = await mkdtemp(path.join(os.tmpdir(), "cardnews-jobs-lock-sync-"));
+  context.after(async () => rm(root, { recursive: true, force: true }));
+  const job = await jobs.createJob({ root, slug: "lock-sync", seed: { safe: true } });
+  const preload = path.join(root, "fail-fsync.cjs");
+  await writeFile(
+    preload,
+    "const fs=require('node:fs');fs.fsyncSync=()=>{const error=new Error('forced fsync failure');error.code='EIO';throw error;};\n"
+  );
+
+  // When
+  const worker = fileURLToPath(new URL("../../src/jobs/anchored-worker.mjs", import.meta.url));
+  const failed = spawnSync(
+    process.execPath,
+    ["--require", preload, worker, job.id, "job", "create-exclusive", ".write.lock", "{}"],
+    { cwd: job.path, input: Buffer.from("{}") }
+  );
+  const afterFailure = await readdir(job.path);
+  const retry = await jobs.acquireJobLock(job);
+  await retry.release();
+
+  // Then
+  assert.equal(failed.status, 1);
+  assert.equal(JSON.parse(failed.stderr.toString()).code, "EIO");
+  assert.equal(afterFailure.some((file) => file.includes(".write.lock")), false);
+  assert.equal((await readdir(job.path)).some((file) => file.includes(".write.lock")), false);
 });
 
 test("Given a non-JSON stage value, When commit canonicalizes it, Then malformed input is rejected and resume remains unchanged", async (context) => {

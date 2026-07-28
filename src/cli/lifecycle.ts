@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import {
   canonicalJson,
@@ -10,6 +10,7 @@ import {
   type JobHandle
 } from "../jobs/index.ts";
 import { JobError } from "../jobs/index.ts";
+import { createAnchoredExclusive } from "#jobs/anchored";
 import { ingestLocal, ingestUrl } from "../ingest/index.ts";
 import type { ParsedArgs } from "./args.ts";
 import { booleanOption, optionalString, requiredString } from "./args.ts";
@@ -114,19 +115,24 @@ const storeSourceEvidence = async (
 ): Promise<void> => {
   const digest = createSourceDigest(source);
   const rawRelative = `source/raw/${digest}.bin`;
-  await mkdir(path.join(job.path, "source", "raw"), { recursive: true });
-  await mkdir(path.join(job.path, "source", "extracted"), { recursive: true });
-  await writeFile(path.join(job.path, rawRelative), bytes, { flag: "wx", mode: 0o400 });
-  await writeFile(
-    path.join(job.path, "source", "extracted", "source-envelope.json"),
-    canonicalJson(source),
-    { encoding: "utf8", flag: "wx", mode: 0o400 }
+  const rawCreated = await createAnchoredExclusive(job, "source/raw", `${digest}.bin`, bytes, 0o400);
+  const envelopeCreated = await createAnchoredExclusive(
+    job,
+    "source/extracted",
+    "source-envelope.json",
+    new TextEncoder().encode(canonicalJson(source)),
+    0o400
   );
-  await writeFile(
-    path.join(job.path, "source", "evidence.json"),
-    canonicalJson({ schemaVersion: 1, rawPath: rawRelative }),
-    { encoding: "utf8", flag: "wx", mode: 0o400 }
+  const evidenceCreated = await createAnchoredExclusive(
+    job,
+    "source",
+    "evidence.json",
+    new TextEncoder().encode(canonicalJson({ schemaVersion: 1, rawPath: rawRelative })),
+    0o400
   );
+  if (!rawCreated || !envelopeCreated || !evidenceCreated) {
+    throw new CliError("security", "SOURCE_EVIDENCE_EXISTS", "source evidence already exists");
+  }
 };
 
 const createSourceDigest = (source: unknown): string => {

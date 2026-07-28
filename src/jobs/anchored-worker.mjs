@@ -3,6 +3,9 @@ import {
   closeSync,
   constants,
   fsyncSync,
+  linkSync,
+  lstatSync,
+  mkdirSync,
   openSync,
   readFileSync,
   readdirSync,
@@ -42,7 +45,11 @@ const readNoFollow = (target) => {
 };
 
 try {
-  const headTarget = scope === "records" ? "../head.json" : "head.json";
+  const scopeSegments = scope === "job" ? [] : scope.split("/");
+  if (scopeSegments.some((segment) => segment === "" || segment === "." || segment === "..")) {
+    fail("PATH_ESCAPE", "anchored directory scope is invalid", scope);
+  }
+  const headTarget = `${"../".repeat(scopeSegments.length)}head.json`;
   let head;
   try {
     head = JSON.parse(readNoFollow(headTarget).toString("utf8"));
@@ -63,27 +70,29 @@ try {
     process.stdout.write(JSON.stringify(readdirSync(".")));
   } else if (operation === "create-exclusive") {
     const target = safeName(name);
-    let descriptor;
-    try {
-      descriptor = openSync(
-        target,
-        constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW,
-        0o600
-      );
-    } catch (error) {
-      if (error?.code === "EEXIST") {
-        process.stdout.write("exists");
-        process.exit(0);
-      }
-      throw error;
-    }
+    const temporary = `.${target}.${randomUUID()}.tmp`;
+    const descriptor = openSync(
+      temporary,
+      constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW,
+      typeof options.mode === "number" ? options.mode : 0o600
+    );
+    let closed = false;
     try {
       writeFileSync(descriptor, readFileSync(0));
       fsyncSync(descriptor);
-    } finally {
       closeSync(descriptor);
+      closed = true;
+      try {
+        linkSync(temporary, target);
+        process.stdout.write("created");
+      } catch (error) {
+        if (error?.code !== "EEXIST") throw error;
+        process.stdout.write("exists");
+      }
+    } finally {
+      if (!closed) closeSync(descriptor);
+      rmSync(temporary, { force: true });
     }
-    process.stdout.write("created");
   } else if (operation === "atomic-write") {
     const target = safeName(name);
     const temporary = `.${target}.${randomUUID()}.tmp`;
@@ -114,6 +123,17 @@ try {
     }
   } else if (operation === "remove") {
     rmSync(safeName(name), { force: options.force === true });
+  } else if (operation === "mkdir") {
+    const target = safeName(name);
+    try {
+      mkdirSync(target, { mode: 0o700 });
+    } catch (error) {
+      if (error?.code !== "EEXIST") throw error;
+      const stats = lstatSync(target);
+      if (stats.isSymbolicLink() || !stats.isDirectory()) {
+        fail("SYMLINK_ESCAPE", "anchored directory target must be a real directory", target);
+      }
+    }
   } else if (operation === "rename-remove") {
     const target = safeName(name);
     const temporary = safeName(options.temporary);

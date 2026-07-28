@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
@@ -132,6 +132,50 @@ test("Given a credentialed URL containing secrets, When ingest rejects it, Then 
   assert.equal(result.stderr, "");
   assert.equal(JSON.parse(result.stdout).error.class, "security");
   assert.doesNotMatch(result.stdout, /secret-user|secret-pass|example\.invalid|\/Users\/|cookies?|authorization/iu);
+});
+
+test("Given drafts or source storage redirected through symlinks, When CLI writes private state, Then both writes fail before touching the targets", async (context) => {
+  // Given
+  const workspace = await temporaryWorkspace(context);
+  const outsideDrafts = await mkdtemp(path.join(os.tmpdir(), "cardnews-cli-drafts-outside-"));
+  const outsideSource = await mkdtemp(path.join(os.tmpdir(), "cardnews-cli-source-outside-"));
+  context.after(() => Promise.all([
+    rm(outsideDrafts, { recursive: true, force: true }),
+    rm(outsideSource, { recursive: true, force: true })
+  ]));
+  const draftInitialized = await run(workspace, [
+    "init", "--slug", "draft-link", "--target", "portrait-social-1080x1350", "--json"
+  ]);
+  const draftJob = JSON.parse(draftInitialized.stdout).result.jobPath;
+  const sourceFile = path.join(workspace, "article.md");
+  await writeFile(sourceFile, "# Safe source\n\nLocal evidence.");
+  await run(workspace, [
+    "ingest", "--job", draftJob, "--file", sourceFile, "--allowed-root", workspace, "--json"
+  ]);
+  const draftJobPath = path.join(workspace, draftJob);
+  await rm(path.join(draftJobPath, "drafts"), { recursive: true });
+  await symlink(outsideDrafts, path.join(draftJobPath, "drafts"));
+  const sourceInitialized = await run(workspace, [
+    "init", "--slug", "source-link", "--target", "portrait-social-1080x1350", "--json"
+  ]);
+  const sourceJob = JSON.parse(sourceInitialized.stdout).result.jobPath;
+  const sourceJobPath = path.join(workspace, sourceJob);
+
+  // When
+  const draft = await run(workspace, [
+    "scaffold-record", "--job", draftJob, "--stage", "editorial-brief", "--json"
+  ]);
+  await rm(path.join(sourceJobPath, "source"), { recursive: true });
+  await symlink(outsideSource, path.join(sourceJobPath, "source"));
+  const ingest = await run(workspace, [
+    "ingest", "--job", sourceJob, "--file", sourceFile, "--allowed-root", workspace, "--json"
+  ]);
+
+  // Then
+  assert.equal(draft.code, 3);
+  assert.equal(ingest.code, 3);
+  assert.deepEqual(await readdir(outsideDrafts), []);
+  assert.deepEqual(await readdir(outsideSource), []);
 });
 
 test("Given an existing immutable job, When init is retried and then forced, Then retry preserves the original and force creates a revision", async (context) => {

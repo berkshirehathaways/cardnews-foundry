@@ -1,4 +1,4 @@
-import { readFile, rm, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import {
   canonicalJson,
@@ -8,7 +8,11 @@ import {
   type ContractName
 } from "../contracts/index.ts";
 import { commitStage, forceCommitStage, type JobHandle, type StageName } from "../jobs/index.ts";
-import { readAnchoredText } from "#jobs/anchored";
+import {
+  createAnchoredExclusive,
+  readAnchoredText,
+  removeAnchored
+} from "#jobs/anchored";
 import { parseHead } from "#jobs/head";
 import { parseCanonicalRecord } from "#jobs/records";
 import { CliError } from "./errors.ts";
@@ -111,13 +115,13 @@ export const scaffoldDraft = async (
 ): Promise<{ readonly path: string; readonly value: Readonly<Record<string, unknown>> }> => {
   const target = path.join(job.path, "drafts", `${stage}.json`);
   const value = await draftTemplate(job, stage);
-  await writeFile(target, `${canonicalJson(value)}\n`, { encoding: "utf8", flag: "wx", mode: 0o600 })
-    .catch((error: unknown) => {
-      if (error instanceof Error && Reflect.get(error, "code") === "EEXIST") {
-        throw new CliError("usage", "DRAFT_EXISTS", "draft already exists");
-      }
-      throw error;
-    });
+  const created = await createAnchoredExclusive(
+    job,
+    "drafts",
+    `${stage}.json`,
+    new TextEncoder().encode(`${canonicalJson(value)}\n`)
+  );
+  if (!created) throw new CliError("usage", "DRAFT_EXISTS", "draft already exists");
   return { path: target, value };
 };
 
@@ -171,18 +175,26 @@ export const commitRecordValue = async (
 };
 
 export const replaceDraftWithReceipt = async (
-  draft: string,
+  job: JobHandle,
   stage: RecordStage,
   recordDigest: string
 ): Promise<string> => {
-  const receipt = path.join(path.dirname(draft), `${stage}.receipt.json`);
-  await writeFile(receipt, canonicalJson({
-    schemaVersion: 1,
-    stage,
-    recordPath: `records/${recordDigest}.json`,
-    recordDigest
-  }), { encoding: "utf8", flag: "wx", mode: 0o444 });
-  await rm(draft);
+  const receiptName = `${stage}.receipt.json`;
+  const receipt = path.join(job.path, "drafts", receiptName);
+  const created = await createAnchoredExclusive(
+    job,
+    "drafts",
+    receiptName,
+    new TextEncoder().encode(canonicalJson({
+      schemaVersion: 1,
+      stage,
+      recordPath: `records/${recordDigest}.json`,
+      recordDigest
+    })),
+    0o444
+  );
+  if (!created) throw new CliError("usage", "RECEIPT_EXISTS", "record receipt already exists");
+  await removeAnchored(job, "drafts", `${stage}.json`);
   return receipt;
 };
 

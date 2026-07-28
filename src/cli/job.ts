@@ -1,9 +1,13 @@
-import { mkdir, readFile, realpath, writeFile } from "node:fs/promises";
+import { realpath } from "node:fs/promises";
 import path from "node:path";
 import { canonicalJson } from "../contracts/index.ts";
 import type { JobHandle } from "../jobs/index.ts";
 import { JobError } from "../jobs/index.ts";
-import { readAnchoredText } from "#jobs/anchored";
+import {
+  createAnchoredExclusive,
+  mkdirAnchored,
+  readAnchoredText
+} from "#jobs/anchored";
 import { parseHead } from "#jobs/head";
 import { resolveConfinedPath } from "#jobs/paths";
 import { CliError } from "./errors.ts";
@@ -55,15 +59,18 @@ export const openJob = async (jobArgument: string): Promise<JobHandle> => {
 };
 
 export const writeJobMetadata = async (job: JobHandle, metadata: JobMetadata): Promise<void> => {
-  await writeFile(path.join(job.path, "job.json"), canonicalJson(metadata), {
-    encoding: "utf8",
-    flag: "wx",
-    mode: 0o444
-  });
+  const created = await createAnchoredExclusive(
+    job,
+    "job",
+    "job.json",
+    new TextEncoder().encode(canonicalJson(metadata)),
+    0o444
+  );
+  if (!created) throw new JobError("JOB_METADATA_EXISTS", "job metadata already exists");
 };
 
 export const readJobMetadata = async (job: JobHandle): Promise<JobMetadata> => {
-  const value: unknown = JSON.parse(await readFile(path.join(job.path, "job.json"), "utf8"));
+  const value: unknown = JSON.parse(await readAnchoredText(job, "job", "job.json"));
   if (
     typeof value !== "object" || value === null || Array.isArray(value) ||
     !("schemaVersion" in value) || value.schemaVersion !== 1 ||
@@ -84,7 +91,10 @@ export const readJobMetadata = async (job: JobHandle): Promise<JobMetadata> => {
 };
 
 export const ensureJobDirectories = async (job: JobHandle): Promise<void> => {
-  for (const name of ["drafts", "source/raw", "source/extracted", "assets", "render", "reports", "package"]) {
-    await mkdir(path.join(job.path, name), { recursive: true });
+  for (const name of ["drafts", "source", "assets", "render", "reports", "package"]) {
+    await mkdirAnchored(job, "job", name);
+  }
+  for (const name of ["raw", "extracted"]) {
+    await mkdirAnchored(job, "source", name);
   }
 };

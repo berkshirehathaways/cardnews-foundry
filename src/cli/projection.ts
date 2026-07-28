@@ -3,6 +3,7 @@ import { copyFile, mkdir, readFile, readdir, rm, rmdir, utimes, writeFile } from
 import path from "node:path";
 import { canonicalJson, validateContract, validateContractChain } from "../contracts/index.ts";
 import type { JobHandle } from "../jobs/index.ts";
+import { readAnchoredBytes, readAnchoredText } from "#jobs/anchored";
 import { CliError } from "./errors.ts";
 import { ownInterruptCleanup } from "./interruption.ts";
 import { acceptedValue } from "./records.ts";
@@ -168,15 +169,23 @@ export const createPrivateProjection = async (
     ) {
       throw new CliError("render", "VISUAL_RECIPE_INVALID", "visual recipe is invalid");
     }
-    const evidence: unknown = JSON.parse(await readFile(path.join(job.path, "source", "evidence.json"), "utf8"));
+    const evidence: unknown = JSON.parse(await readAnchoredText(job, "source", "evidence.json"));
     if (
       typeof evidence !== "object" || evidence === null ||
       !("rawPath" in evidence) || typeof evidence.rawPath !== "string"
     ) {
       throw new CliError("render", "SOURCE_EVIDENCE_MISSING", "source evidence is missing");
     }
+    const rawMatch = /^source\/raw\/([a-f0-9]{64})\.bin$/u.exec(evidence.rawPath);
+    if (rawMatch === null) {
+      throw new CliError("security", "SOURCE_EVIDENCE_INVALID", "source evidence path is invalid");
+    }
     const sourceTarget = path.join(root, "source.bin");
-    await copyFile(path.join(job.path, evidence.rawPath), sourceTarget);
+    await writeFile(
+      sourceTarget,
+      await readAnchoredBytes(job, "source/raw", `${rawMatch[1]}.bin`),
+      { flag: "wx", mode: 0o400 }
+    );
     const sourceEntry = await descriptor("source:article", sourceTarget);
     const values = [
       ["SourceEnvelope", source],

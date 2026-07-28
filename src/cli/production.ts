@@ -1,9 +1,14 @@
-import { access, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { access, readdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { importAsset } from "../assets/index.ts";
 import { canonicalJson, validateContract, type EvaluationReport } from "../contracts/index.ts";
 import { evaluateGateMatrix, GATE_IDS, loadEvaluationInput } from "../evaluate/index.mjs";
 import { commitStage } from "../jobs/index.ts";
+import {
+  createAnchoredExclusive,
+  readAnchoredText,
+  removeAnchored
+} from "#jobs/anchored";
 import { packagePrivateJob } from "../package/index.mjs";
 import { renderFixture } from "../render/index.mjs";
 import type { ParsedArgs } from "./args.ts";
@@ -43,19 +48,27 @@ export const commitRecordCommand = async (args: ParsedArgs): Promise<unknown> =>
       throw new CliError("security", "DRAFT_PATH_INVALID", "record input must be the fixed draft path");
     }
   }
-  const value = await readInputJson(input);
+  const value = stage === "source"
+    ? await readInputJson(input)
+    : JSON.parse(await readAnchoredText(job, "drafts", `${stage}.json`));
   const committed = await commitRecordValue(job, stage, value, booleanOption(args, "force"));
   if (committed.job.id !== job.id) {
     await prepareRecordRevision(job, committed.job);
   }
-  let receiptInput = input;
   if (stage !== "source" && committed.job.id !== job.id) {
-    receiptInput = path.join(committed.job.path, "drafts", `${stage}.json`);
-    await rename(input, receiptInput);
+    const name = `${stage}.json`;
+    const created = await createAnchoredExclusive(
+      committed.job,
+      "drafts",
+      name,
+      new TextEncoder().encode(await readAnchoredText(job, "drafts", name))
+    );
+    if (!created) throw new CliError("usage", "DRAFT_EXISTS", "revision draft already exists");
+    await removeAnchored(job, "drafts", name);
   }
   const receipt = stage === "source"
     ? undefined
-    : await replaceDraftWithReceipt(receiptInput, stage, committed.recordDigest);
+    : await replaceDraftWithReceipt(committed.job, stage, committed.recordDigest);
   return {
     jobId: committed.job.id,
     jobPath: displayPath(committed.job.path),
@@ -209,7 +222,14 @@ export const evaluateCommand = async (args: ParsedArgs): Promise<unknown> => {
     const validation = validateContract("EvaluationReport", report);
     if (!validation.ok) throw new CliError("qa", "REPORT_INVALID", "evaluation report is invalid");
     const reportPath = path.join(job.path, "reports", "evaluation-report.json");
-    await writeFile(reportPath, canonicalJson(report), { encoding: "utf8", flag: "wx", mode: 0o400 });
+    const created = await createAnchoredExclusive(
+      job,
+      "reports",
+      "evaluation-report.json",
+      new TextEncoder().encode(canonicalJson(report)),
+      0o400
+    );
+    if (!created) throw new CliError("qa", "REPORT_EXISTS", "evaluation report already exists");
     const digest = await commitStage(job, { stage: "evaluate", value: report });
     return {
       jobId: job.id,

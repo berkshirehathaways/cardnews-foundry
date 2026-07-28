@@ -56,7 +56,7 @@ export const acquireJobLock = async (job: JobHandle, options: LockOptions = {}):
   const staleAfterMs = options.staleAfterMs ?? DEFAULT_STALE_AFTER_MS;
   const record = { token: randomUUID(), pid: process.pid, createdAtMs: nowMs };
   const bytes = new TextEncoder().encode(canonicalJson(record));
-  if (!(await createAnchoredExclusive(job, lockName, bytes))) {
+  if (!(await createAnchoredExclusive(job, "job", lockName, bytes))) {
     let existing: LockRecord | undefined;
     try {
       existing = parseLock(await readAnchoredText(job, "job", lockName));
@@ -73,7 +73,7 @@ export const acquireJobLock = async (job: JobHandle, options: LockOptions = {}):
     } catch (error) {
       if (errorCode(error) !== "ENOENT") throw error;
     }
-    if (!(await createAnchoredExclusive(job, lockName, bytes))) {
+    if (!(await createAnchoredExclusive(job, "job", lockName, bytes))) {
       throw new JobError("JOB_LOCKED", "another writer won stale-lock recovery");
     }
   }
