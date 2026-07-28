@@ -68,6 +68,7 @@ export const freshCreateOutcomePassed = (outcome) => {
     "evaluationAccepted",
   ];
   const completed = outcome.candidates.filter((candidate) =>
+    candidate.packageExit === 0 &&
     requiredChecks.every((check) => candidate.checks[check] === true));
   return completed.length === 1;
 };
