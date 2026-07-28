@@ -337,13 +337,18 @@ test("Given accepted asset files are replaced, When projection or revision reads
   await writeFile(artifactPath, originalAsset);
   await chmod(metadataPath, 0o600);
   const metadata = JSON.parse(originalMetadata.toString("utf8"));
-  metadata.byteCount += 1;
+  delete metadata.originNote;
   await writeFile(metadataPath, canonicalJson(metadata));
   const metadataRejection = await runJson(workspace, ["render", "--job", job], 3);
+  const metadataRevisionRejection = await runJson(workspace, [
+    "commit-record", "--job", job, "--stage", "editorial-brief",
+    "--input", scaffold.output.result.draftPath, "--force"
+  ], 3);
 
   assert.equal(projectionRejection.output.error.code, "ASSET_INTEGRITY_INVALID");
   assert.equal(revisionRejection.output.error.code, "ASSET_INTEGRITY_INVALID");
   assert.equal(metadataRejection.output.error.code, "ASSET_INTEGRITY_INVALID");
+  assert.equal(metadataRevisionRejection.output.error.code, "ASSET_INTEGRITY_INVALID");
   assert.deepEqual(await readFile(artifactPath), originalAsset);
 });
 

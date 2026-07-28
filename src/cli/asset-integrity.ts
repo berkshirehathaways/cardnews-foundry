@@ -72,7 +72,8 @@ const parseMetadata = (bytes: Uint8Array): AssetRecord => {
     typeof record["publicEligible"] !== "boolean" ||
     !Array.isArray(blockers) ||
     blockers.some((entry) => typeof entry !== "string") ||
-    (originNote !== undefined && !string(originNote))
+    (originNote !== undefined && !string(originNote)) ||
+    (record["rights"] !== "user-provided" && !string(originNote))
   ) return fail();
   return value as AssetRecord;
 };
