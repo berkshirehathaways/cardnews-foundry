@@ -64,6 +64,7 @@ export const createRemoteFixture = async () => {
   await initRepository(seed);
   git(seed, "remote", "add", "origin", bare);
   git(seed, "push", "-u", "origin", "main");
+  git(bare, "symbolic-ref", "HEAD", "refs/heads/main");
   git(root, "clone", bare, work);
   git(work, "config", "user.name", "Skill Test");
   git(work, "config", "user.email", "skill-test@example.invalid");
