@@ -1,5 +1,3 @@
-import { deflateSync } from "node:zlib";
-
 const crcTable = Array.from({ length: 256 }, (_, value) => {
   let crc = value;
   for (let bit = 0; bit < 8; bit += 1) crc = (crc & 1) === 1 ? 0xedb88320 ^ (crc >>> 1) : crc >>> 1;
@@ -17,6 +15,32 @@ const chunk = (type, data) => {
   const checksum = Buffer.alloc(4);
   checksum.writeUInt32BE(crc32(Buffer.concat([name, data])));
   return Buffer.concat([length, name, data, checksum]);
+};
+
+const adler32 = (bytes) => {
+  let first = 1;
+  let second = 0;
+  for (const byte of bytes) {
+    first = (first + byte) % 65521;
+    second = (second + first) % 65521;
+  }
+  return ((second << 16) | first) >>> 0;
+};
+
+const stableDeflate = (bytes) => {
+  const blocks = [Buffer.from([0x78, 0x01])];
+  for (let offset = 0; offset < bytes.length; offset += 65535) {
+    const length = Math.min(65535, bytes.length - offset);
+    const header = Buffer.alloc(5);
+    header[0] = offset + length === bytes.length ? 1 : 0;
+    header.writeUInt16LE(length, 1);
+    header.writeUInt16LE((~length) & 0xffff, 3);
+    blocks.push(header, bytes.subarray(offset, offset + length));
+  }
+  const checksum = Buffer.alloc(4);
+  checksum.writeUInt32BE(adler32(bytes));
+  blocks.push(checksum);
+  return Buffer.concat(blocks);
 };
 
 export const makeSyntheticPng = (variant) => {
@@ -46,7 +70,7 @@ export const makeSyntheticPng = (variant) => {
   return Buffer.concat([
     Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
     chunk("IHDR", header),
-    chunk("IDAT", deflateSync(scanlines, { level: 9 })),
+    chunk("IDAT", stableDeflate(scanlines)),
     chunk("IEND", Buffer.alloc(0))
   ]);
 };
