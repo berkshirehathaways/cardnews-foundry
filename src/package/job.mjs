@@ -17,6 +17,15 @@ import { publishImmutable } from "./publish.mjs";
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const MAX_VERDICT_BYTES = 1024 * 1024;
 
+export const isAcceptedDeterministicReport = (report) => {
+  const visualIndex = GATE_IDS.indexOf("visual-pass-a");
+  return !report.blocking &&
+    report.gates.length === visualIndex &&
+    report.gates.every((gate, index) =>
+      gate.id === GATE_IDS[index] && gate.status === "pass"
+    );
+};
+
 const readVerdict = async (file) => {
   let metadata;
   try {
@@ -45,14 +54,9 @@ const requireAcceptedEvaluation = async (job) => {
     throw new PackageError("PACKAGE_PRECONDITION_FAILED", "accepted deterministic evaluation is required");
   }
   const validation = validateContract("EvaluationReport", value);
-  const visualIndex = GATE_IDS.indexOf("visual-pass-a");
   if (
     !validation.ok ||
-    validation.value.blocking ||
-    validation.value.gates.length < visualIndex ||
-    validation.value.gates.slice(0, visualIndex).some((gate, index) =>
-      gate.id !== GATE_IDS[index] || gate.status !== "pass"
-    )
+    !isAcceptedDeterministicReport(validation.value)
   ) {
     throw new PackageError("PACKAGE_PRECONDITION_FAILED", "accepted deterministic evaluation is incomplete");
   }
