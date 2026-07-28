@@ -50,6 +50,28 @@ const reviseCopyOnly = async ({ fixture, baseline }) => {
   };
 };
 
+export const selectForwardContextSpecs = (contextSpecs, selection) => {
+  if (selection === "skip") return [];
+  if (selection === "fresh-create") {
+    return contextSpecs.filter(({ scenario }) => scenario === "fresh-create");
+  }
+  return contextSpecs;
+};
+
+export const freshCreateOutcomePassed = (outcome) => {
+  const requiredChecks = [
+    "statusExit",
+    "acceptedStages",
+    "sevenCurrentCards",
+    "contactSheet",
+    "renderInventoryCurrent",
+    "evaluationAccepted",
+  ];
+  const completed = outcome.candidates.filter((candidate) =>
+    requiredChecks.every((check) => candidate.checks[check] === true));
+  return completed.length === 1;
+};
+
 export const runForwardQa = async ({ fixture, evidenceRoot }) => {
   const runRoot = path.join(evidenceRoot, "private", `forward-${randomUUID()}`);
   await mkdir(runRoot, { recursive: true });
@@ -123,17 +145,23 @@ export const runForwardQa = async ({ fixture, evidenceRoot }) => {
       expectedJob: noImageGeneration.job,
     },
   ];
-  const contexts = process.env.CARDNEWS_FORWARD_CONTEXTS === "skip"
-    ? []
-    : await Promise.all(contextSpecs.map((spec) => runFreshContext({
+  const contextSelection = process.env.CARDNEWS_FORWARD_CONTEXTS;
+  const contexts = await Promise.all(selectForwardContextSpecs(
+    contextSpecs, contextSelection,
+  ).map((spec) => runFreshContext({
         ...spec,
         evidenceRoot,
         envelope: createDisclosureEnvelope({ ...spec, installedSkill }),
-        verifyOutcome: () => inspectWorkspaceOutcome({
-          runner,
-          workspace: spec.cwd,
-          job: spec.expectedJob,
-        }),
+        verifyOutcome: async () => {
+          const outcome = await inspectWorkspaceOutcome({
+            runner,
+            workspace: spec.cwd,
+            job: spec.expectedJob,
+          });
+          return contextSelection === "fresh-create"
+            ? { ...outcome, passed: freshCreateOutcomePassed(outcome) }
+            : outcome;
+        },
       })));
   const scenarios = {
     freshCreate: {
