@@ -29,7 +29,12 @@ const codeOf = async (operation) => operation().then(
   () => "ACCEPTED",
   (error) => error instanceof Error && "code" in error ? error.code : "UNKNOWN_ERROR"
 );
-const recipeFor = (digest, rights = "generated", slot = "hero") => ({
+const recipeFor = (
+  digest,
+  rights = "generated",
+  originNote = "Synthetic manual QA provenance",
+  slot = "hero"
+) => ({
   schemaVersion: "1.0.0",
   recipeId: "manual-recipe",
   storyboardDigest: "c".repeat(64),
@@ -44,6 +49,7 @@ const recipeFor = (digest, rights = "generated", slot = "hero") => ({
       slot,
       assetDigest: digest,
       rights,
+      ...(originNote === undefined ? {} : { originNote }),
       altText: "Synthetic manual QA image"
     }],
     accessibilityText: "Synthetic manual QA card"
@@ -68,7 +74,7 @@ const inputFor = async (incoming, workspaceRoot, file, {
     importedAt,
     cardId: "card-1",
     slot,
-    recipe: recipeFor(recipeDigest ?? assetDigest, rights, slot),
+    recipe: recipeFor(recipeDigest ?? assetDigest, rights, originNote, slot),
     ...(limits === undefined ? {} : { limits }),
     ...(failpoint === undefined ? {} : { failpoint })
   };

@@ -41,6 +41,26 @@ test("Given a SourceEnvelope record, When the public contract validator parses i
   assert.equal(result.ok, true);
 });
 
+test("Given non-user asset rights, When VisualRecipe provenance is absent or blank, Then the public contract rejects it", async () => {
+  // Given
+  const contracts = await import("../../src/contracts/index.ts");
+  const fixture = JSON.parse(
+    await readFile(path.join(root, "test", "contracts", "fixtures", "visual-recipe.json"), "utf8")
+  );
+  const missing = structuredClone(fixture.valid);
+  const blank = structuredClone(fixture.valid);
+  delete missing.cards[0].assetBindings[0].originNote;
+  blank.cards[0].assetBindings[0].originNote = "   ";
+
+  // When
+  const missingResult = contracts.validateContract("VisualRecipe", missing);
+  const blankResult = contracts.validateContract("VisualRecipe", blank);
+
+  // Then
+  assert.equal(missingResult.ok, false);
+  assert.equal(blankResult.ok, false);
+});
+
 test("Given compatibility fixtures, When the public verifier runs, Then all contract and version cases pass", async () => {
   // Given
   const command = path.join(root, "scripts", "verify-contracts.mjs");

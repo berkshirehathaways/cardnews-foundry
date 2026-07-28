@@ -82,6 +82,19 @@ for (const rights of ["generated", "licensed", "public-domain", "unknown"]) {
   });
 }
 
+test("Given any explicit blank origin note, When imported, Then provenance rejects before storage", async (context) => {
+  // Given
+  const sandbox = await makeSandbox(context);
+  const input = await importInput({
+    ...sandbox,
+    rights: "user-provided",
+    originNote: "   "
+  });
+
+  // When / Then
+  await rejectCode(assets.importAsset(input), "ASSET_ORIGIN_NOTE_INVALID");
+});
+
 test("Given an invalid or non-UTC import timestamp, When imported, Then the deterministic timestamp boundary rejects", async (context) => {
   // Given
   const first = await makeSandbox(context, "cardnews-assets-time-a-");
@@ -110,6 +123,16 @@ test("Given a missing recipe slot or mismatched binding, When imported, Then the
   // When / Then
   await rejectCode(assets.importAsset(missing), "ASSET_SLOT_MISSING");
   await rejectCode(assets.importAsset(mismatch), "ASSET_SLOT_BINDING_MISMATCH");
+});
+
+test("Given a nonblank origin note differs from its immutable recipe receipt, When imported, Then the slot boundary fails closed", async (context) => {
+  // Given
+  const sandbox = await makeSandbox(context);
+  const input = await importInput(sandbox);
+  input.originNote = "Forged nonblank provenance";
+
+  // When / Then
+  await rejectCode(assets.importAsset(input), "ASSET_SLOT_BINDING_MISMATCH");
 });
 
 test("Given a JPEG bound to an alpha overlay slot, When imported, Then MIME and alpha constraints reject", async (context) => {

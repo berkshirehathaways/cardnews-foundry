@@ -165,20 +165,69 @@ const hasHead = async (root) => {
   }
 };
 
+const trackedInventory = async (root) => {
+  const commit = (await gitOutput(root, ["rev-parse", "--verify", "HEAD^{commit}"]))
+    .toString("utf8")
+    .trim();
+  try {
+    await gitOutput(root, ["diff-index", "--quiet", commit, "--"]);
+  } catch {
+    throw new PackageError(
+      "RELEASE_SOURCE_DIRTY",
+      "tracked source differs from the release commit"
+    );
+  }
+  const records = (await gitOutput(root, ["ls-tree", "-rz", "--full-tree", commit]))
+    .toString("utf8")
+    .split("\0")
+    .filter((entry) => entry.length > 0)
+    .map((entry) => {
+      const match = /^([0-7]{6}) blob ([a-f0-9]{40,64})\t([\s\S]+)$/u.exec(entry);
+      if (match === null) {
+        throw new PackageError("RELEASE_SOURCE_TYPE", "commit tree contains a non-blob entry");
+      }
+      const [, rawMode, oid, relativePath] = match;
+      if (rawMode === undefined || oid === undefined || relativePath === undefined) {
+        throw new PackageError("RELEASE_SOURCE_TYPE", "commit tree entry is malformed");
+      }
+      return { path: relativePath, oid, mode: Number.parseInt(rawMode, 8) };
+    })
+    .sort((left, right) => left.path.localeCompare(right.path, "en"));
+  return { commit, records };
+};
+
 export const resolveSourceInventory = async (root) => {
   const tracked = await hasHead(root);
-  const stdout = await gitOutput(root, tracked
-    ? ["ls-files", "-z"]
-    : ["ls-files", "--cached", "--others", "--exclude-standard", "-z"]);
+  if (tracked) {
+    const inventory = await trackedInventory(root);
+    return {
+      mode: "tracked-files",
+      commit: inventory.commit,
+      paths: inventory.records.map((entry) => entry.path),
+      records: inventory.records
+    };
+  }
+  const stdout = await gitOutput(
+    root,
+    ["ls-files", "--cached", "--others", "--exclude-standard", "-z"]
+  );
   const paths = stdout.toString("utf8")
     .split("\0")
     .filter((entry) => entry.length > 0)
     .sort((left, right) => left.localeCompare(right, "en"));
-  return { mode: tracked ? "tracked-files" : "source-inventory", paths };
+  return { mode: "source-inventory", paths };
 };
 
 export const readSourceInventory = async (root) => {
   const inventory = await resolveSourceInventory(root);
+  if (inventory.mode === "tracked-files") {
+    const entries = await Promise.all(inventory.records.map(async (record) => ({
+      path: record.path,
+      bytes: await gitOutput(root, ["cat-file", "blob", record.oid]),
+      mode: record.mode
+    })));
+    return { ...inventory, entries };
+  }
   const entries = await Promise.all(inventory.paths.map(async (relativePath) => {
     const absolutePath = path.join(root, relativePath);
     const metadata = await lstat(absolutePath);

@@ -29,10 +29,21 @@
               "type": "object",
               "additionalProperties": false,
               "required": ["slot", "assetDigest", "rights", "altText"],
+              "allOf": [{
+                "if": {
+                  "properties": { "rights": { "not": { "const": "user-provided" } } },
+                  "required": ["rights"]
+                },
+                "then": {
+                  "properties": { "originNote": true },
+                  "required": ["originNote"]
+                }
+              }],
               "properties": {
                 "slot": { "$ref": "#/$defs/id" },
                 "assetDigest": { "$ref": "#/$defs/sha256" },
                 "rights": { "enum": ["generated", "user-provided", "licensed", "public-domain", "unknown"] },
+                "originNote": { "type": "string", "minLength": 1, "pattern": "\\S" },
                 "altText": { "type": "string", "minLength": 1 }
               }
             }

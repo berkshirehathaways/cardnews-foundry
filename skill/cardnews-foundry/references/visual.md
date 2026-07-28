@@ -3,7 +3,9 @@
 ## Assets and composition
 
 - Use generated, user-provided, licensed, or public-domain assets only with recorded origin and rights.
-- Import each asset through the CLI before binding it to a recipe slot.
+- Put the exact rights and `originNote` for every non-user-provided asset in its
+  immutable VisualRecipe binding. Import through the CLI with those exact same
+  values; the accepted recipe is the trusted provenance receipt.
 - Give every meaningful image accessible alternative text.
 - Use theme tokens and semantic layout primitives. Do not paste card-specific CSS.
 - Vary composition intentionally while preserving typography, spacing, color, radius, stroke, and footer systems.

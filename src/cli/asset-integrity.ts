@@ -124,6 +124,7 @@ export const readVerifiedAsset = async (
     metadata.height !== image.height ||
     metadata.alpha !== image.alpha ||
     metadata.rights !== binding.rights ||
+    metadata.originNote !== binding.originNote ||
     metadata.binding.cardId !== binding.cardId ||
     metadata.binding.slot !== binding.slot ||
     metadata.publicEligible !== publicEligible ||

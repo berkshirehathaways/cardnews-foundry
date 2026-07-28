@@ -26,7 +26,7 @@ const importedAt = "2026-07-27T00:00:00.000Z";
 const digestFile = async (file) =>
   createHash("sha256").update(await readFile(file)).digest("hex");
 
-const recipeFor = (digest, rights, slot = "hero") => ({
+const recipeFor = (digest, rights, originNote, slot = "hero") => ({
   schemaVersion: "1.0.0",
   recipeId: "verify-recipe",
   storyboardDigest: "c".repeat(64),
@@ -41,6 +41,7 @@ const recipeFor = (digest, rights, slot = "hero") => ({
       slot,
       assetDigest: digest,
       rights,
+      ...(originNote === undefined ? {} : { originNote }),
       altText: "Synthetic verifier image"
     }],
     accessibilityText: "Synthetic verifier card"
@@ -68,7 +69,7 @@ const makeInput = async (allowedRoot, workspaceRoot, file, rights, {
     importedAt,
     cardId: "card-1",
     slot: "hero",
-    recipe: recipeFor(recipeDigest ?? actualDigest, rights ?? "generated"),
+    recipe: recipeFor(recipeDigest ?? actualDigest, rights ?? "generated", originNote),
     ...(failpoint === undefined ? {} : { failpoint })
   };
 };

@@ -130,9 +130,12 @@ const parseRights = (rights: string | undefined, originNote: string | undefined)
   }
   const parsed = RIGHTS.find((candidate) => candidate === rights);
   if (parsed === undefined) throw new AssetError("ASSET_RIGHTS_INVALID", "asset rights class is invalid");
+  if (originNote !== undefined && originNote.trim().length === 0) {
+    throw new AssetError("ASSET_ORIGIN_NOTE_INVALID", "asset origin note must contain text");
+  }
   if (
     parsed !== "user-provided" &&
-    (originNote === undefined || originNote.trim().length === 0)
+    originNote === undefined
   ) {
     throw new AssetError("ASSET_ORIGIN_NOTE_REQUIRED", "asset rights class requires an origin note");
   }
@@ -577,7 +580,11 @@ const validateBinding = (
   const card = recipe.value.cards.find((candidate) => candidate.cardId === input.cardId);
   const binding = card?.assetBindings.find((candidate) => candidate.slot === input.slot);
   if (binding === undefined) throw new AssetError("ASSET_SLOT_MISSING", "VisualRecipe slot is missing");
-  if (binding.assetDigest !== digest || binding.rights !== rights) {
+  if (
+    binding.assetDigest !== digest ||
+    binding.rights !== rights ||
+    binding.originNote !== input.originNote
+  ) {
     throw new AssetError("ASSET_SLOT_BINDING_MISMATCH", "asset does not match its recipe binding");
   }
   const policy = SLOT_MEDIA_POLICIES[input.slot];

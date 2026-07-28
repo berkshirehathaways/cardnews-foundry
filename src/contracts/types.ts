@@ -74,6 +74,7 @@ export type VisualRecipe = {
       readonly slot: string;
       readonly assetDigest: Sha256;
       readonly rights: "generated" | "user-provided" | "licensed" | "public-domain" | "unknown";
+      readonly originNote?: string;
       readonly altText: string;
     }[];
     readonly accessibilityText: string;

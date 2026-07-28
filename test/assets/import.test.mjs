@@ -115,7 +115,7 @@ test("Given unknown rights with an origin note, When imported privately, Then pu
     file,
     rights: "unknown",
     originNote: "Rights review pending",
-    recipe: recipeFor(digest, { rights: "unknown" })
+    recipe: recipeFor(digest, { rights: "unknown", originNote: "Rights review pending" })
   });
 
   // When
@@ -141,7 +141,10 @@ for (const rights of ["licensed", "public-domain"]) {
       file,
       rights,
       originNote: `${rights} synthetic fixture provenance`,
-      recipe: recipeFor(digest, { rights })
+      recipe: recipeFor(digest, {
+        rights,
+        originNote: `${rights} synthetic fixture provenance`
+      })
     });
 
     // When

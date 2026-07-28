@@ -6,6 +6,7 @@ import { execFileSync } from "node:child_process";
 import test from "node:test";
 import {
   inspectReleaseEntries,
+  readSourceInventory,
   resolveSourceInventory
 } from "../../src/package/index.mjs";
 
@@ -78,6 +79,30 @@ test("Given a repository with a HEAD, When source inventory resolves, Then track
   // Then
   assert.equal(inventory.mode, "tracked-files");
   assert.deepEqual(inventory.paths, ["tracked.txt"]);
+});
+
+test("Given a committed source tree, When archive inventory reads it, Then bytes come from the commit and tracked dirt rejects", async (context) => {
+  // Given
+  const root = await mkdtemp(path.join(os.tmpdir(), "cardnews-release-commit-"));
+  context.after(() => rm(root, { recursive: true, force: true }));
+  execFileSync("git", ["init", "-q"], { cwd: root });
+  await writeFile(path.join(root, "tracked.txt"), "committed");
+  execFileSync("git", ["add", "tracked.txt"], { cwd: root });
+  execFileSync("git", [
+    "-c", "user.name=Release Test", "-c", "user.email=release@example.invalid",
+    "commit", "-qm", "fixture"
+  ], { cwd: root });
+
+  // When
+  const clean = await readSourceInventory(root);
+  await writeFile(path.join(root, "tracked.txt"), "forged worktree bytes");
+
+  // Then
+  assert.equal(clean.entries[0].bytes.toString("utf8"), "committed");
+  await assert.rejects(
+    readSourceInventory(root),
+    (error) => error.code === "RELEASE_SOURCE_DIRTY" && error.exitClass === 6
+  );
 });
 
 test("Given fonts and synthetic images with explicit licenses and publication rights, When release inspection runs, Then clean entries pass", () => {

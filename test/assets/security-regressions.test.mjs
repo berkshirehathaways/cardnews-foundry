@@ -124,6 +124,7 @@ test("Given duplicate conflicting slot IDs across a recipe, When binding an asse
       slot: "hero",
       assetDigest: "f".repeat(64),
       rights: "unknown",
+      originNote: "Conflicting unknown-rights provenance",
       altText: "Conflicting duplicate slot"
     }]
   });

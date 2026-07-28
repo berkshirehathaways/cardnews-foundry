@@ -7,7 +7,7 @@ Use the CLI as the authority for paths, versions, dependencies, and validation. 
 1. `SourceEnvelope`: sanitized source metadata, stable source spans, provenance, rights status, and raw digest.
 2. `EditorialBrief`: audience, thesis, evidence-backed claims, exclusions, tone, and card-count intent.
 3. `Storyboard`: ordered semantic scenes with claim and source-span links. Exclude HTML, CSS, pixels, and provider parameters.
-4. `VisualRecipe`: composition intent, asset bindings, emphasis, mood, and accessibility text.
+4. `VisualRecipe`: composition intent, asset bindings, immutable rights and origin-note receipts, emphasis, mood, and accessibility text.
 5. `RenderSpec`: target, theme, dimensions, codec, card order, and render environment.
 
 Every record is strict, versioned, canonical JSON. Preserve scaffolded schema fields and dependency digests. Reject unknown fields and unsupported major versions.

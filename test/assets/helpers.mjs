@@ -13,7 +13,8 @@ export const digestFile = async (file) =>
 export const recipeFor = (assetDigest, {
   cardId = "card-1",
   slot = "hero",
-  rights = "generated"
+  rights = "generated",
+  originNote = "Generated locally for deterministic test use"
 } = {}) => ({
   schemaVersion: "1.0.0",
   recipeId: "recipe-1",
@@ -29,6 +30,7 @@ export const recipeFor = (assetDigest, {
       slot,
       assetDigest,
       rights,
+      ...(originNote === undefined ? {} : { originNote }),
       altText: "Synthetic test image"
     }],
     accessibilityText: "Synthetic test card"
@@ -67,7 +69,7 @@ export const importInput = async ({
     importedAt: fixedTimestamp,
     cardId,
     slot,
-    recipe: recipe ?? recipeFor(digest, { cardId, slot, rights }),
+    recipe: recipe ?? recipeFor(digest, { cardId, slot, rights, originNote }),
     ...extra
   };
 };
