@@ -1,9 +1,13 @@
 import { randomUUID } from "node:crypto";
-import { open, readFile, rename, rm } from "node:fs/promises";
 import path from "node:path";
 import { canonicalJson } from "#contracts";
+import {
+  createAnchoredExclusive,
+  readAnchoredText,
+  removeAnchored,
+  renameRemoveAnchored
+} from "#jobs/anchored";
 import { errorCode, JobError } from "#jobs/errors";
-import { resolveJobTarget } from "#jobs/paths";
 import type { JobHandle, JobLock } from "#jobs/types";
 
 const DEFAULT_STALE_AFTER_MS = 5 * 60 * 1000;
@@ -40,36 +44,22 @@ const processIsAlive = (pid: number): boolean => {
   }
 };
 
-const writeExclusive = async (lockPath: string, record: LockRecord): Promise<boolean> => {
-  try {
-    const handle = await open(lockPath, "wx", 0o600);
-    try {
-      await handle.writeFile(canonicalJson(record));
-      await handle.sync();
-    } finally {
-      await handle.close();
-    }
-    return true;
-  } catch (error) {
-    if (errorCode(error) === "EEXIST") return false;
-    throw error;
-  }
-};
-
 export type LockOptions = {
   readonly staleAfterMs?: number;
   readonly nowMs?: number;
 };
 
 export const acquireJobLock = async (job: JobHandle, options: LockOptions = {}): Promise<JobLock> => {
-  const lockPath = await resolveJobTarget(job, ".write.lock");
+  const lockName = ".write.lock";
+  const lockPath = path.join(job.path, lockName);
   const nowMs = options.nowMs ?? Date.now();
   const staleAfterMs = options.staleAfterMs ?? DEFAULT_STALE_AFTER_MS;
   const record = { token: randomUUID(), pid: process.pid, createdAtMs: nowMs };
-  if (!(await writeExclusive(lockPath, record))) {
+  const bytes = new TextEncoder().encode(canonicalJson(record));
+  if (!(await createAnchoredExclusive(job, lockName, bytes))) {
     let existing: LockRecord | undefined;
     try {
-      existing = parseLock(await readFile(lockPath, "utf8"));
+      existing = parseLock(await readAnchoredText(job, "job", lockName));
     } catch (error) {
       if (errorCode(error) !== "ENOENT") throw error;
     }
@@ -77,14 +67,13 @@ export const acquireJobLock = async (job: JobHandle, options: LockOptions = {}):
       && nowMs - existing.createdAtMs > staleAfterMs
       && !processIsAlive(existing.pid);
     if (!stale) throw new JobError("JOB_LOCKED", "another writer owns the job lock");
-    const stalePath = path.join(job.path, `.write.lock.stale.${record.token}`);
+    const staleName = `.write.lock.stale.${record.token}`;
     try {
-      await rename(lockPath, stalePath);
-      await rm(stalePath, { force: true });
+      await renameRemoveAnchored(job, lockName, staleName);
     } catch (error) {
       if (errorCode(error) !== "ENOENT") throw error;
     }
-    if (!(await writeExclusive(lockPath, record))) {
+    if (!(await createAnchoredExclusive(job, lockName, bytes))) {
       throw new JobError("JOB_LOCKED", "another writer won stale-lock recovery");
     }
   }
@@ -94,7 +83,7 @@ export const acquireJobLock = async (job: JobHandle, options: LockOptions = {}):
     release: async () => {
       let current: LockRecord | undefined;
       try {
-        current = parseLock(await readFile(lockPath, "utf8"));
+        current = parseLock(await readAnchoredText(job, "job", lockName));
       } catch (error) {
         if (errorCode(error) === "ENOENT") return;
         throw error;
@@ -102,7 +91,7 @@ export const acquireJobLock = async (job: JobHandle, options: LockOptions = {}):
       if (current?.token !== record.token) {
         throw new JobError("LOCK_OWNERSHIP_LOST", "refusing to remove a lock owned by another writer");
       }
-      await rm(lockPath);
+      await removeAnchored(job, "job", lockName);
     }
   };
 };

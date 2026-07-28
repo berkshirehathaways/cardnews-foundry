@@ -1,13 +1,18 @@
-import { constants } from "node:fs";
-import { copyFile, mkdir, readFile, readdir, rm } from "node:fs/promises";
+import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { canonicalSha256 } from "#contracts";
+import {
+  atomicWriteAnchored,
+  listAnchored,
+  readAnchoredText,
+  removeAnchored
+} from "#jobs/anchored";
 import { atomicWrite, type AtomicWriteOptions } from "#jobs/atomic";
 import { errorCode, JobError } from "#jobs/errors";
-import { headBytes, headPath, readHead } from "#jobs/head";
+import { headBytes, headPath, parseHead } from "#jobs/head";
 import { acquireJobLock } from "#jobs/lock";
 import { DEFAULT_JOB_ROOT, prepareRoot, resolveJobTarget, safeSlug } from "#jobs/paths";
-import { readRecord, recordBytes, recordDigest, STAGE_DEPENDENCIES } from "#jobs/records";
+import { parseCanonicalRecord, recordBytes, recordDigest, STAGE_DEPENDENCIES } from "#jobs/records";
 import type { JobHandle, JobHead, StageName, StageRecord } from "#jobs/types";
 
 export type CreateJobInput = {
@@ -64,15 +69,18 @@ const dependenciesFor = (
 };
 
 const commit = async (job: JobHandle, input: CommitStageInput, replacement: boolean): Promise<string> => {
+  await resolveJobTarget(job, path.join("records", ".probe"));
   const lock = await acquireJobLock(job);
   try {
-    const head = await readHead(job.path);
+    const head = parseHead(await readAnchoredText(job, "job", "head.json"));
     const acceptedDigest = head.stages[input.stage];
     if (acceptedDigest !== undefined && !replacement) {
       let staleRevisionRecord = false;
       if (head.parentJobId !== undefined) {
         try {
-          const accepted = await readRecord(job.path, acceptedDigest);
+          const accepted = parseCanonicalRecord(
+            await readAnchoredText(job, "records", `${acceptedDigest}.json`)
+          );
           staleRevisionRecord = STAGE_DEPENDENCIES[input.stage].some(
             (dependency) => accepted.dependencies[dependency] !== head.stages[dependency]
           );
@@ -95,11 +103,11 @@ const commit = async (job: JobHandle, input: CommitStageInput, replacement: bool
       dependencies: dependenciesFor(input.stage, head.stages)
     };
     const digest = recordDigest(record);
-    const target = await resolveJobTarget(job, path.join("records", `${digest}.json`));
+    const targetName = `${digest}.json`;
     const bytes = recordBytes(record);
     let existing: string | undefined;
     try {
-      existing = await readFile(target, "utf8");
+      existing = await readAnchoredText(job, "records", targetName);
     } catch (error) {
       if (errorCode(error) !== "ENOENT") throw error;
     }
@@ -109,19 +117,19 @@ const commit = async (job: JobHandle, input: CommitStageInput, replacement: bool
     let recordCreated = false;
     try {
       if (existing === undefined) {
-        await atomicWrite(target, bytes, {
+        await atomicWriteAnchored(job, "records", targetName, bytes, {
           boundary: "record-before-rename",
           failpoint: input.failpoint
         });
         recordCreated = true;
       }
       const nextHead: JobHead = { ...head, stages: { ...head.stages, [input.stage]: digest } };
-      await atomicWrite(await resolveJobTarget(job, "head.json"), headBytes(nextHead), {
+      await atomicWriteAnchored(job, "job", "head.json", headBytes(nextHead), {
         boundary: "head-before-rename",
         failpoint: input.failpoint
       });
     } catch (error) {
-      if (recordCreated) await rm(target, { force: true });
+      if (recordCreated) await removeAnchored(job, "records", targetName, true);
       throw error;
     }
     return digest;
@@ -137,11 +145,15 @@ const cloneRevision = async (
   job: JobHandle,
   failpoint: CommitStageInput["failpoint"]
 ): Promise<JobHandle> => {
-  const sourceHead = await readHead(job.path);
-  const files = await readdir(path.join(job.path, "records"));
-  const sourceRecords: string[] = [];
+  await resolveJobTarget(job, path.join("records", ".probe"));
+  const sourceHead = parseHead(await readAnchoredText(job, "job", "head.json"));
+  const files = await listAnchored(job, "records");
+  const sourceRecords: { readonly name: string; readonly bytes: Uint8Array }[] = [];
   for (const file of files) {
-    sourceRecords.push(await resolveJobTarget(job, path.join("records", file)));
+    sourceRecords.push({
+      name: file,
+      bytes: new TextEncoder().encode(await readAnchoredText(job, "records", file))
+    });
   }
   let revision = sourceHead.revision + 1;
   let revisionHead: JobHead;
@@ -166,15 +178,16 @@ const cloneRevision = async (
       revision += 1;
     }
   }
+  const revisionJob = makeHandle(job.root, revisionHead);
   try {
+    await atomicWrite(
+      headPath(revisionPath),
+      headBytes({ ...revisionHead, stages: {} })
+    );
     for (const source of sourceRecords) {
-      await copyFile(
-        source,
-        path.join(revisionPath, "records", path.basename(source)),
-        constants.COPYFILE_EXCL
-      );
+      await atomicWriteAnchored(revisionJob, "records", source.name, source.bytes);
     }
-    await atomicWrite(headPath(revisionPath), headBytes(revisionHead), {
+    await atomicWriteAnchored(revisionJob, "job", "head.json", headBytes(revisionHead), {
       boundary: "revision-head-before-rename",
       failpoint
     });
@@ -182,7 +195,7 @@ const cloneRevision = async (
     await rm(revisionPath, { recursive: true, force: true });
     throw error;
   }
-  return makeHandle(job.root, revisionHead);
+  return revisionJob;
 };
 
 export const forceCommitStage = async (

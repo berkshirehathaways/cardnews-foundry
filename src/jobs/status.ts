@@ -1,9 +1,10 @@
 import { canonicalSha256 } from "#contracts";
 import path from "node:path";
+import { readAnchoredText } from "#jobs/anchored";
 import { errorCode, JobError } from "#jobs/errors";
-import { headPath, readHead } from "#jobs/head";
+import { headPath, parseHead } from "#jobs/head";
 import { resolveJobTarget } from "#jobs/paths";
-import { readRecord, recordPath, STAGE_DEPENDENCIES } from "#jobs/records";
+import { parseCanonicalRecord, recordPath, STAGE_DEPENDENCIES } from "#jobs/records";
 import { JOB_STAGES, type JobHandle, type JobStatus, type StageState, type StageStatus } from "#jobs/types";
 
 const inspectStage = async (
@@ -19,7 +20,7 @@ const inspectStage = async (
   if (digest === undefined) return { stage, state: "missing", path: target };
   try {
     await resolveJobTarget(job, path.join("records", `${digest}.json`));
-    const record = await readRecord(job.path, digest);
+    const record = parseCanonicalRecord(await readAnchoredText(job, "records", `${digest}.json`));
     const dependencies = STAGE_DEPENDENCIES[stage];
     const staleDependency = dependencies.some((dependency) =>
       states.get(dependency) !== "valid" || record.dependencies[dependency] !== headStages[dependency]
@@ -37,7 +38,7 @@ const inspectStage = async (
 
 export const getJobStatus = async (job: JobHandle): Promise<JobStatus> => {
   await resolveJobTarget(job, "head.json");
-  const head = await readHead(job.path);
+  const head = parseHead(await readAnchoredText(job, "job", "head.json"));
   const statuses: StageStatus[] = [];
   const states = new Map<string, StageState>();
   for (const stage of JOB_STAGES) {

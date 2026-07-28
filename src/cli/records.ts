@@ -8,8 +8,9 @@ import {
   type ContractName
 } from "../contracts/index.ts";
 import { commitStage, forceCommitStage, type JobHandle, type StageName } from "../jobs/index.ts";
-import { readHead } from "#jobs/head";
-import { readRecord } from "#jobs/records";
+import { readAnchoredText } from "#jobs/anchored";
+import { parseHead } from "#jobs/head";
+import { parseCanonicalRecord } from "#jobs/records";
 import { CliError } from "./errors.ts";
 
 export const RECORD_STAGES = [
@@ -63,10 +64,10 @@ export const parseCliStage = (value: string): CliStage =>
 export const definitionFor = (stage: CliStage): StageDefinition => definitions[stage];
 
 export const acceptedValue = async (job: JobHandle, stage: StageName): Promise<unknown> => {
-  const head = await readHead(job.path);
+  const head = parseHead(await readAnchoredText(job, "job", "head.json"));
   const digest = head.stages[stage];
   if (digest === undefined) throw new CliError("usage", "MISSING_DEPENDENCY", "required checkpoint is missing");
-  return (await readRecord(job.path, digest)).value;
+  return parseCanonicalRecord(await readAnchoredText(job, "records", `${digest}.json`)).value;
 };
 
 export const acceptedDigest = async (job: JobHandle, stage: StageName): Promise<string> =>

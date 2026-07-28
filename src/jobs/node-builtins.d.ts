@@ -8,6 +8,29 @@ declare module "node:fs" {
   };
 }
 
+declare module "node:child_process" {
+  type SpawnSyncResult = {
+    readonly error?: Error;
+    readonly status: number | null;
+    readonly stdout: Uint8Array;
+    readonly stderr: Uint8Array;
+  };
+
+  export function spawnSync(
+    command: string,
+    args: readonly string[],
+    options: {
+      readonly cwd: string;
+      readonly input?: Uint8Array;
+      readonly maxBuffer: number;
+    }
+  ): SpawnSyncResult;
+}
+
+declare module "node:url" {
+  export function fileURLToPath(value: URL): string;
+}
+
 declare module "node:fs/promises" {
   type Stats = {
     isDirectory(): boolean;
@@ -65,6 +88,7 @@ declare module "node:path" {
 
 declare const process: {
   readonly pid: number;
+  readonly execPath: string;
   readonly argv: readonly string[];
   exitCode?: number;
   cwd(): string;

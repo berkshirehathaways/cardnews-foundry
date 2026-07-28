@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { once } from "node:events";
-import { mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -47,6 +47,36 @@ test("Given a job records directory redirected to a sibling job, When a stage co
   await assert.rejects(commit, (error) => error.code === "SYMLINK_ESCAPE");
   assert.deepEqual(await readdir(secondRecords), before);
   assert.equal((await readdir(first.path)).some((file) => file.includes(".lock")), false);
+});
+
+test("Given a records directory repeatedly swapped with a sibling symlink, When commits race the swaps, Then no sibling record is created", async (context) => {
+  // Given
+  const root = await mkdtemp(path.join(os.tmpdir(), "cardnews-jobs-sibling-race-"));
+  context.after(async () => rm(root, { recursive: true, force: true }));
+
+  // When
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const first = await jobs.createJob({ root, slug: `first-${attempt}`, seed: { attempt, job: 1 } });
+    const second = await jobs.createJob({ root, slug: `second-${attempt}`, seed: { attempt, job: 2 } });
+    const firstRecords = path.join(first.path, "records");
+    const secondRecords = path.join(second.path, "records");
+    const target = path.relative(first.path, secondRecords);
+    let stop = false;
+    const toggler = (async () => {
+      while (!stop) {
+        await rm(firstRecords, { recursive: true, force: true }).catch(() => undefined);
+        await symlink(target, firstRecords).catch(() => undefined);
+        await rm(firstRecords, { recursive: true, force: true }).catch(() => undefined);
+        await mkdir(firstRecords, { recursive: false }).catch(() => undefined);
+      }
+    })();
+    await jobs.commitStage(first, { stage: "source", value: { attempt } }).catch(() => undefined);
+    stop = true;
+    await toggler;
+
+    // Then
+    assert.deepEqual(await readdir(secondRecords), []);
+  }
 });
 
 test("Given a non-JSON stage value, When commit canonicalizes it, Then malformed input is rejected and resume remains unchanged", async (context) => {

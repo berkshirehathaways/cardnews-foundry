@@ -53,11 +53,12 @@ export const recordDigest = (record: StageRecord): string => canonicalSha256(rec
 export const recordBytes = (record: StageRecord): Uint8Array => new TextEncoder().encode(canonicalJson(record));
 export const recordPath = (jobPath: string, digest: string): string =>
   path.join(jobPath, "records", `${digest}.json`);
-export const readRecord = async (jobPath: string, digest: string): Promise<StageRecord> => {
-  const text = await readFile(recordPath(jobPath, digest), "utf8");
+export const parseCanonicalRecord = (text: string): StageRecord => {
   const record = parseRecord(text);
   if (text !== canonicalJson(record)) {
     throw new JobError("NON_CANONICAL_RECORD", "stage record bytes are not canonical");
   }
   return record;
 };
+export const readRecord = async (jobPath: string, digest: string): Promise<StageRecord> =>
+  parseCanonicalRecord(await readFile(recordPath(jobPath, digest), "utf8"));
