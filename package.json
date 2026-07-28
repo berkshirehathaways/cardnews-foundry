@@ -37,6 +37,7 @@
     "test:skill": "node scripts/test-skill.mjs",
     "test:themes": "node --test test/themes/*.test.mjs",
     "verify:assets": "node scripts/verify-assets.mjs",
+    "verify:github": "node scripts/verify-github.mjs",
     "verify:contracts": "node scripts/verify-contracts.mjs",
     "verify:ingest": "node scripts/verify-ingest.mjs",
     "verify:jobs": "node scripts/verify-jobs.mjs",
@@ -54,6 +55,7 @@
     "qa:render-showcase": "node scripts/qa-render-showcase.mjs",
     "qa:forward": "node scripts/qa-forward.mjs",
     "qa:live-smoke": "node scripts/qa-live-smoke.mjs",
+    "qa:release": "node scripts/qa-release.mjs",
     "qa:visual": "node scripts/qa-visual.mjs",
     "fonts:fetch": "node scripts/fetch-fonts.mjs"
   },
