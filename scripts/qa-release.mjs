@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { execFile as execFileCallback } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
@@ -25,6 +26,16 @@ const readOption = (args, name) => {
 };
 
 const shortSha = (value) => value.slice(0, 12);
+
+export const resolveEvidenceRoot = ({
+  evidenceRoot,
+  environment = process.env,
+  homeDirectory = os.homedir(),
+} = {}) => path.resolve(
+  evidenceRoot
+    ?? environment.CARDNEWS_QA_EVIDENCE_ROOT
+    ?? path.join(homeDirectory, ".omo", "evidence", "cardnews-foundry", "T15", "a1"),
+);
 
 const hasHead = async (runCommand) => {
   const result = await runCommand("git", ["rev-parse", "--verify", "HEAD"], { cwd: repositoryRoot });
@@ -79,9 +90,7 @@ export const runReleaseQa = async ({
   sha: injectedSha,
   run = runCommand,
 } = {}) => {
-  const resolvedEvidenceRoot = path.resolve(
-    evidenceRoot ?? process.env.CARDNEWS_QA_EVIDENCE_ROOT ?? path.join(repositoryRoot, ".omo", "evidence", "cardnews-foundry", "T15", "a1"),
-  );
+  const resolvedEvidenceRoot = resolveEvidenceRoot({ evidenceRoot });
   await mkdir(resolvedEvidenceRoot, { recursive: true });
   const head = await hasHead(run);
   const sha = head.exists ? head.sha : injectedSha;

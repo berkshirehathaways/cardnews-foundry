@@ -5,7 +5,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { runReleaseQa } from "../../scripts/qa-release.mjs";
+import { resolveEvidenceRoot, runReleaseQa } from "../../scripts/qa-release.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const injectedSha = "abcdef0123456789abcdef0123456789abcdef01";
@@ -46,6 +46,31 @@ const createRunner = ({ headExists, headSha, cleanCloneSummary }) => {
   };
   return { run, calls };
 };
+
+test("resolveEvidenceRoot selects the environment override before the external home fallback without filesystem writes", () => {
+  const homeDirectory = path.join(os.tmpdir(), "cardnews-qa-home-not-created");
+  const override = path.join(os.tmpdir(), "cardnews-qa-override-not-created");
+  const fallback = path.join(
+    homeDirectory,
+    ".omo",
+    "evidence",
+    "cardnews-foundry",
+    "T15",
+    "a1",
+  );
+  const repositoryEvidenceRoot = path.resolve(repositoryRoot, ".omo");
+
+  assert.equal(resolveEvidenceRoot({ environment: {}, homeDirectory }), fallback);
+  assert.equal(
+    resolveEvidenceRoot({
+      environment: { CARDNEWS_QA_EVIDENCE_ROOT: override },
+      homeDirectory,
+    }),
+    override,
+  );
+  assert.equal(fallback.startsWith(`${repositoryEvidenceRoot}${path.sep}`), false);
+  assert.equal(override.startsWith(`${repositoryEvidenceRoot}${path.sep}`), false);
+});
 
 test("runReleaseQa binds an unborn repository to the injected SHA and writes evidence", async (context) => {
   const root = await prepareRepo(false);
@@ -104,7 +129,7 @@ test("runReleaseQa binds a repository with HEAD to the exact commit SHA and reje
   });
 
   await assert.rejects(
-    () => runReleaseQa({ sha: injectedSha, run }),
+    () => runReleaseQa({ evidenceRoot: path.join(root, "evidence"), sha: injectedSha, run }),
     (error) => error.code === "QA_RELEASE_SHA_MISMATCH" && error.exitClass === 6,
   );
 });

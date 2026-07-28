@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
 import {
-  access, copyFile, mkdir, mkdtemp, readFile, rm, writeFile,
+  access, copyFile, mkdir, mkdtemp, readFile, rename, rm, writeFile,
 } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -78,6 +78,17 @@ const absent = async (target) => access(target).then(() => false).catch((error) 
   if (error instanceof Error && error.code === "ENOENT") return true;
   throw error;
 });
+
+export const publishArtifact = async (source, destination) => {
+  const temporaryDirectory = await mkdtemp(path.join(path.dirname(destination), ".publish-"));
+  const temporaryArtifact = path.join(temporaryDirectory, path.basename(destination));
+  try {
+    await copyFile(source, temporaryArtifact);
+    await rename(temporaryArtifact, destination);
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+};
 
 const verify = async () => {
   const requestedEvidence = evidenceDirectory();
@@ -216,8 +227,8 @@ const verify = async () => {
     };
     if (requestedEvidence !== undefined) {
       await Promise.all([
-        copyFile(path.join(artifacts, "synthetic-cardnews.zip"), path.join(durableRoot, "synthetic-cardnews.zip")),
-        copyFile(sourceArchive, path.join(durableRoot, "source-archive.zip")),
+        publishArtifact(path.join(artifacts, "synthetic-cardnews.zip"), path.join(durableRoot, "synthetic-cardnews.zip")),
+        publishArtifact(sourceArchive, path.join(durableRoot, "source-archive.zip")),
       ]);
     }
     summary.ok = true;
@@ -231,13 +242,15 @@ const verify = async () => {
   return summary;
 };
 
-try {
-  process.stdout.write(`${JSON.stringify(await verify())}\n`);
-} catch (error) {
-  process.stderr.write(`${JSON.stringify({
-    ok: false,
-    code: "CLEAN_CLONE_FAILED",
-    message: error instanceof Error ? error.message : "unknown failure",
-  })}\n`);
-  process.exitCode = 1;
+if (process.argv[1] !== undefined && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try {
+    process.stdout.write(`${JSON.stringify(await verify())}\n`);
+  } catch (error) {
+    process.stderr.write(`${JSON.stringify({
+      ok: false,
+      code: "CLEAN_CLONE_FAILED",
+      message: error instanceof Error ? error.message : "unknown failure",
+    })}\n`);
+    process.exitCode = 1;
+  }
 }

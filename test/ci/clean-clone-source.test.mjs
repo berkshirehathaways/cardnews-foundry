@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -8,6 +8,7 @@ import {
   CleanCloneError,
   createCleanCheckout,
 } from "../../scripts/clean-clone-source.mjs";
+import { publishArtifact } from "../../scripts/verify-clean-clone.mjs";
 
 const git = (root, ...args) => {
   const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
@@ -104,3 +105,43 @@ for (const [name, mutate] of [
   });
 }
 
+test("Given a prior read-only clean-clone artifact, When publication reruns, Then it replaces the exact artifact bytes", async (context) => {
+  // Given
+  const root = await mkdtemp(path.join(os.tmpdir(), "cardnews-clean-publish-"));
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const source = path.join(root, "source.zip");
+  const destination = path.join(root, "synthetic-cardnews.zip");
+  const expected = Buffer.from("second deterministic synthetic artifact");
+  await writeFile(source, expected);
+  await writeFile(destination, "first artifact");
+  await chmod(destination, 0o444);
+
+  // When
+  await publishArtifact(source, destination);
+
+  // Then
+  assert.deepEqual(await readFile(destination), expected);
+  assert.deepEqual((await readdir(root)).filter((entry) => entry.startsWith(".publish-")), []);
+});
+
+test("Given an attacker-controlled evidence symlink, When publication reruns, Then it replaces the link without changing its target", async (context) => {
+  // Given
+  const root = await mkdtemp(path.join(os.tmpdir(), "cardnews-clean-publish-"));
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const source = path.join(root, "source.zip");
+  const destination = path.join(root, "synthetic-cardnews.zip");
+  const target = path.join(root, "attacker-target.zip");
+  const expected = Buffer.from("replacement deterministic synthetic artifact");
+  await writeFile(source, expected);
+  await writeFile(target, "attacker-owned bytes");
+  await symlink(target, destination);
+
+  // When
+  await publishArtifact(source, destination);
+
+  // Then
+  assert.deepEqual(await readFile(destination), expected);
+  assert.equal(await readFile(target, "utf8"), "attacker-owned bytes");
+  assert.equal((await lstat(destination)).isSymbolicLink(), false);
+  assert.deepEqual((await readdir(root)).filter((entry) => entry.startsWith(".publish-")), []);
+});
