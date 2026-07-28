@@ -37,6 +37,10 @@ declare module "node:fs/promises" {
     isFile(): boolean;
     isSymbolicLink(): boolean;
   };
+  type BigIntStats = Stats & {
+    readonly dev: bigint;
+    readonly ino: bigint;
+  };
 
   type FileHandle = {
     writeFile(data: Uint8Array | string): Promise<void>;
@@ -48,6 +52,7 @@ declare module "node:fs/promises" {
   export function mkdir(path: string, options: { readonly recursive: boolean }): Promise<string | undefined>;
   export function realpath(path: string): Promise<string>;
   export function lstat(path: string): Promise<Stats>;
+  export function lstat(path: string, options: { readonly bigint: true }): Promise<BigIntStats>;
   export function rename(oldPath: string, newPath: string): Promise<void>;
   export function rm(path: string, options?: { readonly force?: boolean; readonly recursive?: boolean }): Promise<void>;
   export function rmdir(path: string): Promise<void>;

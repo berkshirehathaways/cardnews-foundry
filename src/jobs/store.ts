@@ -1,4 +1,4 @@
-import { mkdir, rm } from "node:fs/promises";
+import { lstat, mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { canonicalSha256 } from "#contracts";
 import {
@@ -26,13 +26,19 @@ export type CommitStageInput = AtomicWriteOptions & {
   readonly value: unknown;
 };
 
-const makeHandle = (root: string, head: JobHead): JobHandle => ({
-  root,
-  path: path.join(root, head.jobId),
-  id: head.jobId,
-  slug: head.slug,
-  revision: head.revision
-});
+const makeHandle = async (root: string, head: JobHead): Promise<JobHandle> => {
+  const jobPath = path.join(root, head.jobId);
+  const owner = await lstat(jobPath, { bigint: true });
+  return {
+    root,
+    path: jobPath,
+    id: head.jobId,
+    slug: head.slug,
+    revision: head.revision,
+    ownerDevice: owner.dev.toString(),
+    ownerInode: owner.ino.toString()
+  };
+};
 
 export const createJob = async (input: CreateJobInput): Promise<JobHandle> => {
   const root = await prepareRoot(input.root ?? path.resolve(DEFAULT_JOB_ROOT));
@@ -178,7 +184,7 @@ const cloneRevision = async (
       revision += 1;
     }
   }
-  const revisionJob = makeHandle(job.root, revisionHead);
+  const revisionJob = await makeHandle(job.root, revisionHead);
   try {
     await atomicWrite(
       headPath(revisionPath),

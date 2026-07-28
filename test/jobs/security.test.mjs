@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile, spawnSync } from "node:child_process";
 import { once } from "node:events";
-import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, readFile, readdir, rename, rm, symlink, writeFile } from "node:fs/promises";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -11,6 +11,15 @@ import { promisify } from "node:util";
 
 const jobs = await import("../../src/jobs/index.ts");
 const execFileAsync = promisify(execFile);
+const anchorOptions = async (target) => {
+  const stats = await lstat(target, { bigint: true });
+  return {
+    anchorDevice: stats.dev.toString(),
+    anchorInode: stats.ino.toString(),
+    jobDevice: stats.dev.toString(),
+    jobInode: stats.ino.toString()
+  };
+};
 
 test("Given a job records directory replaced by an escaping symlink, When a stage commits, Then the internal write is rejected before touching the target", async (context) => {
   // Given
@@ -95,7 +104,10 @@ test("Given lock data cannot be durably synced, When exclusive creation fails, T
   const worker = fileURLToPath(new URL("../../src/jobs/anchored-worker.mjs", import.meta.url));
   const failed = spawnSync(
     process.execPath,
-    ["--require", preload, worker, job.id, "job", "create-exclusive", ".write.lock", "{}"],
+    [
+      "--require", preload, worker, job.id, "job", "create-exclusive", ".write.lock",
+      JSON.stringify(await anchorOptions(job.path))
+    ],
     { cwd: job.path, input: Buffer.from("{}") }
   );
   const afterFailure = await readdir(job.path);
@@ -107,6 +119,23 @@ test("Given lock data cannot be durably synced, When exclusive creation fails, T
   assert.equal(JSON.parse(failed.stderr.toString()).code, "EIO");
   assert.equal(afterFailure.some((file) => file.includes(".write.lock")), false);
   assert.equal((await readdir(job.path)).some((file) => file.includes(".write.lock")), false);
+});
+
+test("Given a live handle whose directory is replaced by a forged matching job id, When status runs, Then owner inode binding rejects it", async (context) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "cardnews-jobs-forged-owner-"));
+  context.after(async () => rm(root, { recursive: true, force: true }));
+  const job = await jobs.createJob({ root, slug: "forged-owner", seed: { safe: true } });
+  await rename(job.path, path.join(root, "original-owner"));
+  await mkdir(job.path);
+  await mkdir(path.join(job.path, "records"));
+  await writeFile(
+    path.join(job.path, "head.json"),
+    JSON.stringify({ schemaVersion: 1, jobId: job.id, slug: job.slug, revision: 0, stages: {} })
+  );
+
+  const status = jobs.getJobStatus(job);
+
+  await assert.rejects(status, (error) => error.code === "JOB_IDENTITY_MISMATCH");
 });
 
 test("Given a non-JSON stage value, When commit canonicalizes it, Then malformed input is rejected and resume remains unchanged", async (context) => {

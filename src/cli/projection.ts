@@ -18,16 +18,11 @@ type Descriptor = {
 
 type AssetDescriptor = Descriptor & {
   readonly id: string;
-  readonly metadataKey: string;
-  readonly metadataPath: string;
-  readonly metadataSha256: string;
-  readonly metadataByteCount: number;
+  readonly metadataKey: string; readonly metadataPath: string;
+  readonly metadataSha256: string; readonly metadataByteCount: number;
 };
 
-export type PrivateProjection = {
-  readonly root: string;
-  readonly cleanup: () => Promise<void>;
-};
+export type PrivateProjection = { readonly root: string; readonly cleanup: () => Promise<void> };
 
 const removeEmpty = async (target: string): Promise<void> => {
   try {

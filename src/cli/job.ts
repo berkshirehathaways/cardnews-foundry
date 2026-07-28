@@ -1,4 +1,4 @@
-import { realpath } from "node:fs/promises";
+import { lstat, realpath } from "node:fs/promises";
 import path from "node:path";
 import { canonicalJson } from "../contracts/index.ts";
 import type { JobHandle } from "../jobs/index.ts";
@@ -46,7 +46,16 @@ export const openJob = async (jobArgument: string): Promise<JobHandle> => {
   const id = path.basename(resolved);
   const confined = await resolveConfinedPath(root, id);
   if (confined !== resolved) throw new JobError("PATH_ESCAPE", "job path is not confined");
-  const candidate: JobHandle = { root, path: resolved, id, slug: id, revision: 0 };
+  const owner = await lstat(resolved, { bigint: true });
+  const candidate: JobHandle = {
+    root,
+    path: resolved,
+    id,
+    slug: id,
+    revision: 0,
+    ownerDevice: owner.dev.toString(),
+    ownerInode: owner.ino.toString()
+  };
   const head = parseHead(await readAnchoredText(candidate, "job", "head.json"));
   if (head.jobId !== id) throw new JobError("MALFORMED_HEAD", "job identifier does not match its path");
   return {
@@ -54,7 +63,9 @@ export const openJob = async (jobArgument: string): Promise<JobHandle> => {
     path: resolved,
     id,
     slug: head.slug,
-    revision: head.revision
+    revision: head.revision,
+    ownerDevice: candidate.ownerDevice,
+    ownerInode: candidate.ownerInode
   };
 };
 

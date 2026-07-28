@@ -17,6 +17,8 @@ export type JobHandle = {
   readonly id: string;
   readonly slug: string;
   readonly revision: number;
+  readonly ownerDevice: string;
+  readonly ownerInode: string;
 };
 
 export type StageRecord = {

@@ -11,6 +11,7 @@ import {
   readdirSync,
   renameSync,
   rmSync,
+  statSync,
   writeFileSync
 } from "node:fs";
 
@@ -56,6 +57,23 @@ try {
   ) {
     fail("PATH_ESCAPE", "anchored directory scope is not approved", scope);
   }
+  const options = JSON.parse(optionsText);
+  const anchor = statSync(".", { bigint: true });
+  if (
+    options.anchorDevice !== anchor.dev.toString() ||
+    options.anchorInode !== anchor.ino.toString()
+  ) {
+    fail("JOB_IDENTITY_MISMATCH", "anchored directory identity changed before worker startup");
+  }
+  const owner = statSync(scopeSegments.length === 0 ? "." : "../".repeat(scopeSegments.length), {
+    bigint: true
+  });
+  if (
+    options.jobDevice !== owner.dev.toString() ||
+    options.jobInode !== owner.ino.toString()
+  ) {
+    fail("JOB_IDENTITY_MISMATCH", "job directory identity changed before worker startup");
+  }
   const headTarget = `${"../".repeat(scopeSegments.length)}head.json`;
   let head;
   try {
@@ -70,7 +88,6 @@ try {
       actual: head?.jobId
     });
   }
-  const options = JSON.parse(optionsText);
   if (operation === "read") {
     process.stdout.write(readNoFollow(safeName(name)));
   } else if (operation === "list") {

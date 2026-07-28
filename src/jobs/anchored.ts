@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { lstat } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { JobError } from "#jobs/errors";
@@ -41,13 +42,32 @@ const run = async (
   input?: Uint8Array,
   options: Readonly<Record<string, unknown>> = {}
 ): Promise<Uint8Array> => {
+  const owner = await lstat(job.path, { bigint: true });
+  if (
+    owner.isSymbolicLink() || !owner.isDirectory() ||
+    owner.dev.toString() !== job.ownerDevice ||
+    owner.ino.toString() !== job.ownerInode
+  ) {
+    throw new JobError("JOB_IDENTITY_MISMATCH", "job directory identity changed", job.id);
+  }
   const directory = scope === "job" ? "" : scope;
   const relativeTarget = path.join(directory, name.length === 0 ? ".probe" : name);
   await resolveJobTarget(job, relativeTarget);
   const cwd = scope === "job" ? job.path : path.join(job.path, ...scope.split("/"));
+  const anchor = await lstat(cwd, { bigint: true });
+  if (anchor.isSymbolicLink() || !anchor.isDirectory()) {
+    throw new JobError("SYMLINK_ESCAPE", "anchored scope must be a real directory", scope);
+  }
+  const workerOptions = {
+    ...options,
+    anchorDevice: anchor.dev.toString(),
+    anchorInode: anchor.ino.toString(),
+    jobDevice: job.ownerDevice,
+    jobInode: job.ownerInode
+  };
   const result = spawnSync(
     process.execPath,
-    [workerPath, job.id, scope, operation, name, JSON.stringify(options)],
+    [workerPath, job.id, scope, operation, name, JSON.stringify(workerOptions)],
     input === undefined ? {
       cwd,
       maxBuffer: 128 * 1024 * 1024
