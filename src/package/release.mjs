@@ -148,7 +148,7 @@ const gitOutput = async (root, args) => {
   const result = await execute("git", args, {
     cwd: root,
     encoding: "buffer",
-    maxBuffer: 16 * 1024 * 1024
+    maxBuffer: 64 * 1024 * 1024
   });
   return Buffer.from(result.stdout);
 };
