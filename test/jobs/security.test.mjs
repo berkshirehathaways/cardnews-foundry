@@ -32,6 +32,23 @@ test("Given a job records directory replaced by an escaping symlink, When a stag
   assert.equal((await readdir(job.path)).some((file) => file.includes(".lock")), false);
 });
 
+test("Given a job records directory redirected to a sibling job, When a stage commits, Then cross-job writes are rejected", async (context) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "cardnews-jobs-sibling-link-"));
+  context.after(async () => rm(root, { recursive: true, force: true }));
+  const first = await jobs.createJob({ root, slug: "first", seed: { job: 1 } });
+  const second = await jobs.createJob({ root, slug: "second", seed: { job: 2 } });
+  const secondRecords = path.join(second.path, "records");
+  await rm(path.join(first.path, "records"), { recursive: true });
+  await symlink(secondRecords, path.join(first.path, "records"));
+  const before = await readdir(secondRecords);
+
+  const commit = jobs.commitStage(first, { stage: "source", value: { text: "cross-write" } });
+
+  await assert.rejects(commit, (error) => error.code === "SYMLINK_ESCAPE");
+  assert.deepEqual(await readdir(secondRecords), before);
+  assert.equal((await readdir(first.path)).some((file) => file.includes(".lock")), false);
+});
+
 test("Given a non-JSON stage value, When commit canonicalizes it, Then malformed input is rejected and resume remains unchanged", async (context) => {
   // Given
   const root = await mkdtemp(path.join(os.tmpdir(), "cardnews-jobs-malformed-"));

@@ -36,8 +36,16 @@ export const resolveConfinedPath = async (root: string, relativePath: string): P
   for (const segment of segments.slice(0, -1)) {
     const candidate = path.join(parent, segment);
     try {
+      const stats = await lstat(candidate);
+      if (stats.isSymbolicLink()) {
+        throw new JobError("SYMLINK_ESCAPE", "job path parents must not be symbolic links", relativePath);
+      }
+      if (!stats.isDirectory()) {
+        throw new JobError("NON_REGULAR_PATH", "job path parent must be a directory", relativePath);
+      }
       parent = await realpath(candidate);
     } catch (error) {
+      if (error instanceof JobError) throw error;
       if (!(errorCode(error) === "ENOENT")) throw error;
       parent = candidate;
     }
@@ -72,7 +80,7 @@ export const resolveJobTarget = async (job: JobHandle, relativePath: string): Pr
   if (path.resolve(job.path) !== expectedJobPath) {
     throw new JobError("PATH_ESCAPE", "job handle path does not match its confined identifier", job.path);
   }
-  return resolveConfinedPath(job.root, path.join(job.id, relativePath));
+  return resolveConfinedPath(expectedJobPath, relativePath);
 };
 
 const errorCode = (error: unknown): unknown =>
