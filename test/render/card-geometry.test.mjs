@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -6,7 +7,13 @@ import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const fixtureRoot = path.join(root, "fixtures", "synthetic");
-const stableChrome = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+const stableChrome = (
+  process.platform === "darwin"
+    ? ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"]
+    : process.platform === "linux"
+      ? ["/usr/bin/google-chrome", "/usr/bin/google-chrome-stable"]
+      : []
+).find(existsSync);
 
 const inspectGeometry = (page) => page.evaluate(() => {
   const epsilon = 0.1;
@@ -184,16 +191,20 @@ test("Given all production cards, When pinned Chromium measures flow and text pa
   assert.deepEqual(reports.filter((report) => report.issues.length > 0), []);
 });
 
-test("Given affected production cards, When Chrome Stable measures geometry, Then it agrees that paint and footer bounds are safe", async () => {
-  // Given / When
-  const reports = await renderCardsInBrowser({
-    executablePath: stableChrome,
-    cardIds: ["card-2", "card-4", "card-6"]
-  });
+test(
+  "Given affected production cards, When Chrome Stable measures geometry, Then it agrees that paint and footer bounds are safe",
+  { skip: stableChrome === undefined ? "Chrome Stable is not installed on this host" : false },
+  async () => {
+    // Given / When
+    const reports = await renderCardsInBrowser({
+      executablePath: stableChrome,
+      cardIds: ["card-2", "card-4", "card-6"]
+    });
 
-  // Then
-  assert.deepEqual(reports.filter((report) => report.issues.length > 0), []);
-});
+    // Then
+    assert.deepEqual(reports.filter((report) => report.issues.length > 0), []);
+  },
+);
 
 test("Given injected flex collision, oversized diagram nodes, and displaced footer, When renderer geometry runs, Then typed failures reject screenshots", async () => {
   // Given

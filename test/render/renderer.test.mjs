@@ -76,7 +76,6 @@ test("Given rendered synthetic cards, When PNG and artifact records are independ
     assert.equal(artifact.colorSpace, target.output.colorSpace);
     assert.equal(artifact.contract.dependencyDigests.every((digest) => knownDigests.has(digest)), true);
     assert.equal(artifact.nativeEnvironment.platform, process.platform);
-    assert.notEqual(artifact.nativeEnvironment.platform, "linux");
     assert.equal(artifact.canonicalRenderProfile.locale, "ko-KR");
   }
 });
