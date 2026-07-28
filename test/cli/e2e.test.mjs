@@ -337,7 +337,7 @@ test("Given accepted asset files are replaced, When projection or revision reads
   await writeFile(artifactPath, originalAsset);
   await chmod(metadataPath, 0o600);
   const metadata = JSON.parse(originalMetadata.toString("utf8"));
-  delete metadata.originNote;
+  metadata.originNote = "   ";
   await writeFile(metadataPath, canonicalJson(metadata));
   const metadataRejection = await runJson(workspace, ["render", "--job", job], 3);
   const metadataRevisionRejection = await runJson(workspace, [

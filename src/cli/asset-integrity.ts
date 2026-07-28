@@ -24,6 +24,8 @@ const fail = (): never => {
 };
 const string = (value: unknown): value is string =>
   typeof value === "string" && value.length > 0;
+const nonBlankString = (value: unknown): value is string =>
+  typeof value === "string" && value.trim().length > 0;
 const positiveInteger = (value: unknown): value is number =>
   Number.isSafeInteger(value) && Number(value) > 0;
 const utcTimestamp = (value: unknown): value is string => {
@@ -73,7 +75,7 @@ const parseMetadata = (bytes: Uint8Array): AssetRecord => {
     !Array.isArray(blockers) ||
     blockers.some((entry) => typeof entry !== "string") ||
     (originNote !== undefined && !string(originNote)) ||
-    (record["rights"] !== "user-provided" && !string(originNote))
+    (record["rights"] !== "user-provided" && !nonBlankString(originNote))
   ) return fail();
   return value as AssetRecord;
 };
