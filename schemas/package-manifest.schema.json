@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stevenshin.github.io/cardnews-foundry/schemas/package-manifest.schema.json",
+  "title": "PackageManifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "packageId", "files", "recordDigests", "dependencyVersions"],
+  "properties": {
+    "schemaVersion": { "$ref": "#/$defs/version" },
+    "packageId": { "$ref": "#/$defs/id" },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["relativePath", "size", "mediaType", "sha256"],
+        "properties": {
+          "relativePath": { "$ref": "#/$defs/relativePath" },
+          "size": { "type": "integer", "minimum": 0 },
+          "mediaType": { "enum": ["image/png", "image/jpeg", "application/json", "text/plain"] },
+          "sha256": { "$ref": "#/$defs/sha256" }
+        }
+      }
+    },
+    "recordDigests": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/sha256" } },
+    "dependencyVersions": {
+      "description": "Extension map of deterministic dependency identifiers to locked versions.",
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/id" },
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,63}$" },
+    "version": { "type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$" },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "relativePath": { "type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\)[A-Za-z0-9._/-]+$" }
+  }
+}

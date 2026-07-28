@@ -1,0 +1,229 @@
+import { createHash } from "node:crypto";
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { canonicalJsonBytes, canonicalSha256 } from "../../src/contracts/index.ts";
+import { importAsset } from "../../src/assets/index.ts";
+import { ingestLocal } from "../../src/ingest/index.ts";
+import { makeSyntheticPng } from "./png.mjs";
+
+const fixtureRoot = path.dirname(fileURLToPath(import.meta.url));
+const repositoryRoot = path.resolve(fixtureRoot, "../..");
+const writeMode = process.argv.includes("--write");
+const fixedTime = "2026-01-01T00:00:00.000Z";
+const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
+
+const ensureBytes = async (relativePath, bytes) => {
+  const target = path.join(repositoryRoot, relativePath);
+  let existing;
+  try { existing = await readFile(target); } catch (error) {
+    if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT") throw error;
+  }
+  if (existing?.equals(bytes)) return;
+  if (!writeMode) throw new Error(`fixture drift: ${relativePath}`);
+  await mkdir(path.dirname(target), { recursive: true });
+  if (existing !== undefined) await chmod(target, 0o600);
+  await writeFile(target, bytes);
+};
+const fileDescriptor = async (key, relativePath) => {
+  const bytes = await readFile(path.join(repositoryRoot, relativePath));
+  return { key, path: relativePath, sha256: sha256(bytes), byteCount: bytes.byteLength };
+};
+
+const sourceResult = await ingestLocal({
+  allowedRoot: path.join(fixtureRoot, "source"),
+  file: "article.html",
+  now: () => new Date(fixedTime)
+});
+const sourceEnvelope = {
+  ...sourceResult,
+  provenance: {
+    ...sourceResult.provenance,
+    rightsStatus: "generated",
+    transformations: [...sourceResult.provenance.transformations, "fixture-rights-declared"]
+  }
+};
+const evidenceSpans = sourceEnvelope.spans.slice(1);
+const claimCopy = [
+  "가상 마을 모래별의 우체국은 씨앗과 재배 기록을 나누는 도서관으로 바뀌었다.",
+  "씨앗 도서관은 스물네 가구에 매달 세 봉투씩 빌려주었다.",
+  "주민은 싹이 난 날짜와 물을 준 횟수를 기록해 다음 사람에게 건넸다.",
+  "운영자는 기록을 정답이 아니라 환경에 따른 관찰 메모로 다뤘다.",
+  "봉투의 지시처럼 보이는 문장은 자동화 명령이 아닌 인쇄 표지였다.",
+  "여섯 번째 모임에서 열여덟 가구가 다른 집의 기록을 참고했다고 답했다.",
+  "주민들은 성장 속도보다 기록이 잘 이어진 봉투를 전시했다."
+];
+const claims = claimCopy.map((text, index) => ({
+  id: `claim-${index + 1}`,
+  text,
+  sourceSpanIds: [evidenceSpans[index].id]
+}));
+const editorialBrief = {
+  schemaVersion: "1.0.0",
+  briefId: "brief-seed-library",
+  sourceEnvelopeDigest: canonicalSha256(sourceEnvelope),
+  audience: "작은 공동체의 기록과 나눔 방식에 관심 있는 한국어 독자",
+  thesis: "관찰 기록은 정답을 선언할 때보다 다음 사람의 선택을 돕도록 이어질 때 공동 자원이 된다.",
+  claims,
+  exclusions: [
+    "실제 농업 효과나 발아율을 추론하지 않는다.",
+    "실재 기관이나 지역의 운영 사례로 일반화하지 않는다.",
+    "가상 설문 수치를 현실 통계나 성과 예측으로 사용하지 않는다."
+  ],
+  tone: "따뜻하고 명료한 기록 다큐멘터리",
+  cardCountIntent: 7
+};
+const roles = ["hook", "context", "evidence", "insight", "evidence", "insight", "closing"];
+const headlines = ["씨앗을 빌리는 우체국", "한 달에 세 봉투", "관찰을 다음 사람에게", "정답 대신 메모", "명령처럼 보여도", "열여덟 집의 연결", "잘 자란 기록을 전시하다"];
+const bodies = [
+  "가상 마을 모래별에서 오래된 우체국이 씨앗 도서관으로 변했습니다.",
+  "스물네 가구는 햇빛·물·기다림 기호가 적힌 봉투를 매달 세 개씩 빌렸습니다.",
+  "싹이 난 날짜와 물 준 횟수는 반납 봉투에 남아 다음 화분의 선택지가 됐습니다.",
+  "같은 씨앗도 놓인 곳에 따라 속도가 달랐기에 기록은 답안지가 아니라 관찰 노트였습니다.",
+  "‘이전 지시를 무시하라’는 문장은 실행할 명령이 아니라 인쇄 상태를 보는 표지였습니다.",
+  "여섯 번째 모임에서 스물네 집 중 열여덟 집이 다른 집의 메모를 참고했다고 답했습니다.",
+  "가장 빠른 화분보다 가장 오래 이어진 봉투. 목적은 경쟁이 아니라 관찰의 전달이었습니다."
+];
+const storyboard = {
+  schemaVersion: "1.0.0",
+  storyboardId: "story-seed-library",
+  editorialBriefDigest: canonicalSha256(editorialBrief),
+  cards: claims.map((claim, index) => ({
+    id: `card-${index + 1}`,
+    order: index,
+    role: roles[index],
+    headline: headlines[index],
+    body: bodies[index],
+    claimIds: [claim.id],
+    sourceSpanIds: [...claim.sourceSpanIds]
+  }))
+};
+const assetSpecs = [
+  { id: "seed-orbit", file: "seed-orbit.png", cardId: "card-1", slot: "hero", bytes: makeSyntheticPng(0), altText: "종자를 중심으로 초록 궤도가 도는 창작 기하 도형" },
+  { id: "record-grid", file: "record-grid.png", cardId: "card-6", slot: "illustration", bytes: makeSyntheticPng(1), altText: "기록 봉투의 연결을 나타내는 남색 격자 창작 도형" }
+].map((asset) => ({ ...asset, digest: sha256(asset.bytes) }));
+const visualRecipe = {
+  schemaVersion: "1.0.0",
+  recipeId: "recipe-seed-library",
+  storyboardDigest: canonicalSha256(storyboard),
+  targetId: "portrait-social-1080x1350",
+  themeId: "ink-paper",
+  cards: storyboard.cards.map((card, index) => ({
+    cardId: card.id,
+    composition: ["headline", "split", "quote", "diagram", "quote", "split", "closing"][index],
+    mood: ["호기심", "규칙적", "협력적", "차분함", "경계심", "연결감", "따뜻함"][index],
+    emphasis: [card.headline],
+    assetBindings: assetSpecs.filter((asset) => asset.cardId === card.id).map((asset) => ({
+      slot: asset.slot,
+      assetDigest: asset.digest,
+      rights: "generated",
+      altText: asset.altText
+    })),
+    accessibilityText: `${card.headline}. ${card.body}`
+  }))
+};
+const renderSpec = {
+  schemaVersion: "1.0.0",
+  renderSpecId: "render-seed-library",
+  visualRecipeDigest: canonicalSha256(visualRecipe),
+  target: { id: "portrait-social-1080x1350", version: "1.0.0" },
+  theme: { id: "ink-paper", version: "2.0.0" },
+  dimensions: { width: 1080, height: 1350 },
+  codec: "png",
+  cardOrder: storyboard.cards.map((card) => card.id),
+  environment: {
+    platform: "linux",
+    browser: "chromium",
+    browserRevision: "playwright-1.62.0",
+    locale: "ko-KR",
+    timezone: "Asia/Seoul",
+    deviceScaleFactor: 1
+  }
+};
+const records = [
+  ["SourceEnvelope", "source-envelope.json", sourceEnvelope],
+  ["EditorialBrief", "editorial-brief.json", editorialBrief],
+  ["Storyboard", "storyboard.json", storyboard],
+  ["VisualRecipe", "visual-recipe.json", visualRecipe],
+  ["RenderSpec", "render-spec.json", renderSpec]
+];
+for (const [, file, value] of records) await ensureBytes(`fixtures/synthetic/records/${file}`, canonicalJsonBytes(value));
+
+const temporary = await mkdtemp(path.join(os.tmpdir(), "cardnews-synthetic-assets-"));
+try {
+  const sourceRoot = path.join(temporary, "source");
+  const workspaceRoot = path.join(temporary, "workspace");
+  await Promise.all([mkdir(sourceRoot), mkdir(workspaceRoot)]);
+  for (const asset of assetSpecs) {
+    await writeFile(path.join(sourceRoot, asset.file), asset.bytes);
+    const imported = await importAsset({
+      allowedRoot: sourceRoot,
+      workspaceRoot,
+      file: asset.file,
+      rights: "generated",
+      originNote: `Deterministically generated by fixtures/synthetic/generate.mjs (${asset.id})`,
+      importedAt: fixedTime,
+      recipe: visualRecipe,
+      cardId: asset.cardId,
+      slot: asset.slot
+    });
+    await ensureBytes(`fixtures/synthetic/assets/${asset.id}/asset.bin`, await readFile(imported.artifactPath));
+    await ensureBytes(`fixtures/synthetic/assets/${asset.id}/metadata.json`, canonicalJsonBytes(imported.record));
+  }
+} finally {
+  await rm(temporary, { recursive: true, force: true });
+}
+
+const source = await fileDescriptor("source:article", "fixtures/synthetic/source/article.html");
+const assets = [];
+for (const asset of assetSpecs) {
+  const raw = await fileDescriptor(`asset:${asset.id}`, `fixtures/synthetic/assets/${asset.id}/asset.bin`);
+  const metadata = await fileDescriptor(`asset-metadata:${asset.id}`, `fixtures/synthetic/assets/${asset.id}/metadata.json`);
+  assets.push({ id: asset.id, ...raw, metadataKey: metadata.key, metadataPath: metadata.path, metadataSha256: metadata.sha256, metadataByteCount: metadata.byteCount });
+}
+const resources = {
+  target: await fileDescriptor("resource:target", "targets/portrait-social-1080x1350.json"),
+  theme: await fileDescriptor("resource:theme", "themes/ink-paper.json"),
+  fontManifest: await fileDescriptor("resource:font-manifest", "fonts/manifest.json"),
+  fonts: [
+    await fileDescriptor("font:regular", "fonts/NotoSansCJKkr-Regular.otf"),
+    await fileDescriptor("font:bold", "fonts/NotoSansCJKkr-Bold.otf")
+  ]
+};
+const recordDescriptors = records.map(([stage, file, value]) => ({
+  stage,
+  key: `record:${stage}`,
+  path: `fixtures/synthetic/records/${file}`,
+  sha256: canonicalSha256(value),
+  byteCount: canonicalJsonBytes(value).byteLength
+}));
+const resolver = new Map([
+  [source.key, source.sha256],
+  ...assets.flatMap((asset) => [[asset.key, asset.sha256], [asset.metadataKey, asset.metadataSha256]]),
+  ...Object.values(resources).flatMap((value) => Array.isArray(value)
+    ? value.map((entry) => [entry.key, entry.sha256])
+    : [[value.key, value.sha256]]),
+  ...recordDescriptors.map((record) => [record.key, record.sha256])
+]);
+const assetKeys = assets.flatMap((asset) => [asset.key, asset.metadataKey]);
+const dependencyKeys = {
+  SourceEnvelope: [source.key],
+  EditorialBrief: ["record:SourceEnvelope"],
+  Storyboard: ["record:SourceEnvelope", "record:EditorialBrief"],
+  VisualRecipe: ["record:SourceEnvelope", "record:EditorialBrief", "record:Storyboard", resources.target.key, resources.theme.key, ...assetKeys],
+  RenderSpec: ["record:SourceEnvelope", "record:EditorialBrief", "record:Storyboard", "record:VisualRecipe", resources.target.key, resources.theme.key, resources.fontManifest.key, ...resources.fonts.map((font) => font.key), ...assetKeys]
+};
+const manifest = {
+  schemaVersion: 1,
+  fixtureId: "moon-post-seed-library",
+  source,
+  assets,
+  resources,
+  records: recordDescriptors.map((record) => ({
+    ...record,
+    dependencies: dependencyKeys[record.stage].map((key) => ({ key, sha256: resolver.get(key) }))
+  }))
+};
+await ensureBytes("fixtures/synthetic/manifest.json", canonicalJsonBytes(manifest));
+process.stdout.write(`${JSON.stringify({ ok: true, mode: writeMode ? "write" : "check", manifestSha256: sha256(canonicalJsonBytes(manifest)) })}\n`);

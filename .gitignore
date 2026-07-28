@@ -1,0 +1,13 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.cardnews/
+.omo/
+.omx/
+.openchrome/
+playwright-report/
+test-results/
+evidence/
+.env
+.env.*
+fonts/.cache/

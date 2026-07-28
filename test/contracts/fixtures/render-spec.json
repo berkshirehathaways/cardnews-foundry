@@ -1,0 +1,61 @@
+{
+  "contract": "RenderSpec",
+  "valid": {
+    "schemaVersion": "1.0.0",
+    "renderSpecId": "render-spec-1",
+    "visualRecipeDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "target": { "id": "instagram-portrait", "version": "1.0.0" },
+    "theme": { "id": "minimal", "version": "1.0.0" },
+    "dimensions": { "width": 1080, "height": 1350 },
+    "codec": "png",
+    "cardOrder": ["card-1"],
+    "environment": {
+      "platform": "linux",
+      "browser": "chromium",
+      "browserRevision": "1234",
+      "locale": "ko-KR",
+      "timezone": "Asia/Seoul",
+      "deviceScaleFactor": 1
+    }
+  },
+  "invalid": {
+    "expectedCode": "SCHEMA_VERSION_FORMAT",
+    "data": {
+      "schemaVersion": "1.x.0",
+      "renderSpecId": "render-spec-1",
+      "visualRecipeDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "target": { "id": "instagram-portrait", "version": "1.0.0" },
+      "theme": { "id": "minimal", "version": "1.0.0" },
+      "dimensions": { "width": 1080, "height": 1350 },
+      "codec": "png",
+      "cardOrder": ["card-1"],
+      "environment": {
+        "platform": "linux",
+        "browser": "chromium",
+        "browserRevision": "1234",
+        "locale": "ko-KR",
+        "timezone": "Asia/Seoul",
+        "deviceScaleFactor": 1
+      }
+    }
+  },
+  "forwardMinor": {
+    "schemaVersion": "1.7.0",
+    "renderSpecId": "render-spec-1",
+    "visualRecipeDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "target": { "id": "instagram-portrait", "version": "1.0.0" },
+    "theme": { "id": "minimal", "version": "1.0.0" },
+    "dimensions": { "width": 1080, "height": 1350 },
+    "codec": "png",
+    "cardOrder": ["card-1"],
+    "environment": {
+      "platform": "linux",
+      "browser": "chromium",
+      "browserRevision": "1234",
+      "locale": "ko-KR",
+      "timezone": "Asia/Seoul",
+      "deviceScaleFactor": 1
+    }
+  },
+  "unsupportedMajor": { "schemaVersion": "2.0.0" }
+}

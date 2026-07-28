@@ -1,0 +1,44 @@
+{
+  "contract": "PackageManifest",
+  "valid": {
+    "schemaVersion": "1.0.0",
+    "packageId": "package-1",
+    "files": [{
+      "relativePath": "cards/card-1.png",
+      "size": 1024,
+      "mediaType": "image/png",
+      "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    }],
+    "recordDigests": ["4444444444444444444444444444444444444444444444444444444444444444"],
+    "dependencyVersions": { "cardnews-foundry": "1.0.0" }
+  },
+  "invalid": {
+    "expectedCode": "SCHEMA_ADDITIONALPROPERTIES",
+    "data": {
+      "schemaVersion": "1.0.0",
+      "packageId": "package-1",
+      "files": [{
+        "relativePath": "cards/card-1.png",
+        "size": 1024,
+        "mediaType": "image/png",
+        "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+      }],
+      "recordDigests": ["4444444444444444444444444444444444444444444444444444444444444444"],
+      "dependencyVersions": { "cardnews-foundry": "1.0.0" },
+      "providerSdk": "forbidden"
+    }
+  },
+  "forwardMinor": {
+    "schemaVersion": "1.7.0",
+    "packageId": "package-1",
+    "files": [{
+      "relativePath": "cards/card-1.png",
+      "size": 1024,
+      "mediaType": "image/png",
+      "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    }],
+    "recordDigests": ["4444444444444444444444444444444444444444444444444444444444444444"],
+    "dependencyVersions": { "cardnews-foundry": "1.0.0" }
+  },
+  "unsupportedMajor": { "schemaVersion": "2.0.0" }
+}

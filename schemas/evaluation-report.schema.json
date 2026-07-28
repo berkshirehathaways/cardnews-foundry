@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stevenshin.github.io/cardnews-foundry/schemas/evaluation-report.schema.json",
+  "title": "EvaluationReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "evaluationId", "renderSetDigest", "blocking", "gates", "evaluatorVersions"],
+  "properties": {
+    "schemaVersion": { "$ref": "#/$defs/version" },
+    "evaluationId": { "$ref": "#/$defs/id" },
+    "renderSetDigest": { "$ref": "#/$defs/sha256" },
+    "blocking": { "type": "boolean" },
+    "gates": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "status", "evidencePaths"],
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "status": { "enum": ["pass", "fail"] },
+          "evidencePaths": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/relativePath" } }
+        }
+      }
+    },
+    "evaluatorVersions": {
+      "description": "Extension map of evaluator identifiers to semantic versions.",
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/id" },
+      "additionalProperties": { "$ref": "#/$defs/version" }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,63}$" },
+    "version": { "type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$" },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "relativePath": { "type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\)[A-Za-z0-9._/-]+$" }
+  }
+}

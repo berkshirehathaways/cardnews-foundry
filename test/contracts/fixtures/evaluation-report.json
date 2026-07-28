@@ -1,0 +1,31 @@
+{
+  "contract": "EvaluationReport",
+  "valid": {
+    "schemaVersion": "1.0.0",
+    "evaluationId": "evaluation-1",
+    "renderSetDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+    "blocking": false,
+    "gates": [{ "id": "dimensions", "status": "pass", "evidencePaths": ["reports/dimensions.json"] }],
+    "evaluatorVersions": { "deterministic-qa": "1.0.0" }
+  },
+  "invalid": {
+    "expectedCode": "SCHEMA_TYPE",
+    "data": {
+      "schemaVersion": "1.0.0",
+      "evaluationId": "evaluation-1",
+      "renderSetDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "blocking": "false",
+      "gates": [{ "id": "dimensions", "status": "pass", "evidencePaths": ["reports/dimensions.json"] }],
+      "evaluatorVersions": { "deterministic-qa": "1.0.0" }
+    }
+  },
+  "forwardMinor": {
+    "schemaVersion": "1.7.0",
+    "evaluationId": "evaluation-1",
+    "renderSetDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+    "blocking": false,
+    "gates": [{ "id": "dimensions", "status": "pass", "evidencePaths": ["reports/dimensions.json"] }],
+    "evaluatorVersions": { "deterministic-qa": "1.0.0" }
+  },
+  "unsupportedMajor": { "schemaVersion": "2.0.0" }
+}

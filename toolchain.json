@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "nodeMajor": 24,
+  "packageManager": "pnpm@11.15.1",
+  "playwrightVersion": "1.62.0",
+  "chromiumRevision": "1234",
+  "locale": "ko-KR",
+  "timezone": "Asia/Seoul",
+  "viewport": {
+    "width": 1080,
+    "height": 1350
+  },
+  "deviceScaleFactor": 1,
+  "canonicalLinuxImage": "mcr.microsoft.com/playwright:v1.62.0-noble",
+  "browserInstallCommand": "corepack pnpm exec playwright install chromium"
+}

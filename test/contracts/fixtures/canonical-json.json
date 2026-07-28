@@ -1,0 +1,7 @@
+{
+  "input": { "z": [2, 1], "a": "한글\r\n값" },
+  "reordered": { "a": "한글\n값", "z": [2, 1] },
+  "changed": { "a": "한글\n다른 값", "z": [2, 1] },
+  "expectedCanonical": "{\"a\":\"한글\\n값\",\"z\":[2,1]}",
+  "expectedSha256": "86a58bb9ae08dc2a6b824dba4c4ff1a0389c0b8d672c4af7984f344095ad46b7"
+}

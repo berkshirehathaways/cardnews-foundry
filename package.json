@@ -1,0 +1,68 @@
+{
+  "name": "cardnews-foundry",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "cardnews": "./bin/cardnews"
+  },
+  "imports": {
+    "#contracts": "./src/contracts/index.ts",
+    "#ingest/*": "./src/ingest/*.ts",
+    "#jobs/*": "./src/jobs/*.ts"
+  },
+  "packageManager": "pnpm@11.15.1",
+  "engines": {
+    "node": "24.x",
+    "pnpm": "11.15.1"
+  },
+  "scripts": {
+    "build": "corepack pnpm typecheck",
+    "skill:install": "node scripts/skill-lifecycle.mjs install",
+    "skill:status": "node scripts/skill-lifecycle.mjs status",
+    "skill:update": "node scripts/skill-lifecycle.mjs update",
+    "skill:uninstall": "node scripts/skill-lifecycle.mjs uninstall",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --test-concurrency=1 test/*.mjs test/cli/*.test.mjs test/contracts/*.test.mjs test/evaluate/*.test.mjs test/fixture/*.test.mjs test/ingest/*.test.mjs test/jobs/*.test.mjs test/qa/*.test.mjs",
+    "test:assets": "node --test test/assets/*.test.mjs",
+    "test:all": "corepack pnpm test && corepack pnpm test:assets && corepack pnpm test:package && corepack pnpm test:render && corepack pnpm test:skill && corepack pnpm test:themes && corepack pnpm test:ci",
+    "test:cli": "node --test --test-concurrency=1 test/cli/*.test.mjs",
+    "test:ci": "node --test --test-concurrency=1 test/ci/*.test.mjs",
+    "test:contracts": "node --test test/contracts/*.test.mjs",
+    "test:evaluate": "node --test --test-concurrency=1 test/evaluate/gate-matrix.test.mjs && node --test --test-concurrency=1 test/evaluate/report-and-capture.test.mjs && node --test --test-concurrency=1 test/evaluate/verdicts.test.mjs && node --test --test-concurrency=1 test/evaluate/input-security.test.mjs",
+    "test:ingest": "node --test test/ingest/*.test.mjs",
+    "test:jobs": "node --test test/jobs/*.test.mjs",
+    "test:package": "node --test --test-concurrency=1 test/package/*.test.mjs",
+    "test:render": "node --test --test-concurrency=1 test/render/*.test.mjs",
+    "test:skill": "node scripts/test-skill.mjs",
+    "test:themes": "node --test test/themes/*.test.mjs",
+    "verify:assets": "node scripts/verify-assets.mjs",
+    "verify:contracts": "node scripts/verify-contracts.mjs",
+    "verify:ingest": "node scripts/verify-ingest.mjs",
+    "verify:jobs": "node scripts/verify-jobs.mjs",
+    "verify:skill": "node scripts/validate-skill.mjs skill/cardnews-foundry",
+    "verify:release": "node scripts/verify-release.mjs",
+    "verify:fixture": "node scripts/verify-fixture.mjs",
+    "verify:synthetic": "node fixtures/synthetic/generate.mjs && node --test test/fixture/*.test.mjs && node scripts/verify-fixture.mjs fixtures/synthetic",
+    "verify:themes": "node scripts/verify-themes.mjs",
+    "verify:bootstrap": "node scripts/verify-bootstrap.mjs",
+    "verify:clean-clone": "node scripts/verify-clean-clone.mjs",
+    "verify:fonts": "node scripts/verify-bootstrap.mjs --only fonts",
+    "verify:determinism": "node scripts/verify-determinism.mjs",
+    "verify:synthetic-full": "node scripts/verify-synthetic-full.mjs",
+    "render:synthetic": "node scripts/render-synthetic.mjs",
+    "qa:render-showcase": "node scripts/qa-render-showcase.mjs",
+    "qa:forward": "node scripts/qa-forward.mjs",
+    "qa:live-smoke": "node scripts/qa-live-smoke.mjs",
+    "qa:visual": "node scripts/qa-visual.mjs",
+    "fonts:fetch": "node scripts/fetch-fonts.mjs"
+  },
+  "dependencies": {
+    "ajv": "8.20.0",
+    "yazl": "3.3.1"
+  },
+  "devDependencies": {
+    "playwright": "1.62.0",
+    "typescript": "7.0.2"
+  }
+}

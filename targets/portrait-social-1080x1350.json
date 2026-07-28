@@ -1,0 +1,8 @@
+{
+  "schemaVersion": "1.0.0",
+  "targetId": "portrait-social-1080x1350",
+  "dimensions": { "width": 1080, "height": 1350 },
+  "output": { "codec": "png", "mimeType": "image/png", "colorSpace": "srgb", "alpha": "opaque" },
+  "safeArea": { "insets": { "top": 120, "right": 96, "bottom": 120, "left": 96 }, "content": { "width": 888, "height": 1110 }, "documentation": "Keep text and critical visual anchors inside these inset bounds so platform chrome and edge crops do not reduce legibility." },
+  "cardCount": { "minimum": 3, "maximum": 10, "rationale": "Three cards preserve a hook, context, and close; ten caps swipe fatigue while allowing evidence-led stories." }
+}

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "2.0.0", "themeId": "ink-paper", "targetCompatibility": { "targetSchemaMajor": 1, "targetIds": ["portrait-social-1080x1350"] }, "assets": { "sourcePolicy": "local-none" },
+  "tokens": {
+    "colors": { "canvas": "#F6F0E4", "surface": "#FFFDF8", "textPrimary": "#17212B", "textSecondary": "#52606D", "accent": "#C95B2B", "rule": "#D8CDBB" },
+    "typography": {
+      "display": { "font": { "family": "Noto Sans CJK KR", "file": "fonts/NotoSansCJKkr-Bold.otf", "weight": "Bold", "license": "OFL-1.1" }, "size": 92, "lineHeight": 1.05, "tracking": -0.04 },
+      "headline": { "font": { "family": "Noto Sans CJK KR", "file": "fonts/NotoSansCJKkr-Bold.otf", "weight": "Bold", "license": "OFL-1.1" }, "size": 62, "lineHeight": 1.16, "tracking": -0.02 },
+      "body": { "font": { "family": "Noto Sans CJK KR", "file": "fonts/NotoSansCJKkr-Regular.otf", "weight": "Regular", "license": "OFL-1.1" }, "size": 34, "lineHeight": 1.48, "tracking": 0 },
+      "caption": { "font": { "family": "Noto Sans CJK KR", "file": "fonts/NotoSansCJKkr-Regular.otf", "weight": "Regular", "license": "OFL-1.1" }, "size": 24, "lineHeight": 1.35, "tracking": 0.02 }
+    },
+    "spacing": [8, 16, 24, 40, 64, 96], "radii": { "small": 12, "medium": 24, "large": 40 }, "strokes": { "hairline": 1, "standard": 3 }, "shadows": { "soft": { "x": 0, "y": 12, "blur": 24, "color": "#D8CDBB" }, "strong": { "x": 0, "y": 24, "blur": 48, "color": "#52606D" } }
+  },
+  "layoutVariants": [{ "id": "editorial-column", "safeArea": "standard", "grid": { "columns": 6, "gutter": 24 } }, { "id": "paper-inset", "safeArea": "compact", "grid": { "columns": 4, "gutter": 16 } }]
+}

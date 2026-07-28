@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cardnews-foundry.example/schemas/font-manifest.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "sourceArchive", "license", "fonts"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "sourceArchive": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "sha256"],
+      "properties": {
+        "url": { "type": "string", "pattern": "^https://" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "license": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spdx", "file", "sha256"],
+      "properties": {
+        "spdx": { "type": "string", "pattern": "^[A-Za-z0-9.-]+$" },
+        "file": { "type": "string", "pattern": "^fonts/[A-Za-z0-9._-]+$" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "fonts": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["weight", "file", "sha256"],
+        "properties": {
+          "weight": { "enum": ["Regular", "Bold"] },
+          "file": { "type": "string", "pattern": "^fonts/NotoSansCJKkr-(Regular|Bold)\\.otf$" },
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+        }
+      }
+    }
+  }
+}

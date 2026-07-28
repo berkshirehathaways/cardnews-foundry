@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cardnews Foundry"
+  short_description: "Turn articles into validated local cardnews packages"
+  default_prompt: "Use $cardnews-foundry to create a cardnews package from this source."

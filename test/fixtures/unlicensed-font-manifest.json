@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "sourceArchive": {
+    "url": "https://github.com/notofonts/noto-cjk/releases/download/Sans2.004/07_NotoSansCJKkr.zip",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "license": {
+    "spdx": "Proprietary",
+    "file": "fonts/LICENSE-OFL-1.1.txt",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "fonts": [
+    {
+      "weight": "Regular",
+      "file": "fonts/NotoSansCJKkr-Regular.otf",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "weight": "Bold",
+      "file": "fonts/NotoSansCJKkr-Bold.otf",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  ]
+}

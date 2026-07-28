@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stevenshin.github.io/cardnews-foundry/schemas/visual-recipe.schema.json",
+  "title": "VisualRecipe",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "recipeId", "storyboardDigest", "targetId", "themeId", "cards"],
+  "properties": {
+    "schemaVersion": { "$ref": "#/$defs/version" },
+    "recipeId": { "$ref": "#/$defs/id" },
+    "storyboardDigest": { "$ref": "#/$defs/sha256" },
+    "targetId": { "$ref": "#/$defs/id" },
+    "themeId": { "$ref": "#/$defs/id" },
+    "cards": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["cardId", "composition", "mood", "emphasis", "assetBindings", "accessibilityText"],
+        "properties": {
+          "cardId": { "$ref": "#/$defs/id" },
+          "composition": { "enum": ["headline", "split", "quote", "diagram", "closing"] },
+          "mood": { "type": "string", "minLength": 1 },
+          "emphasis": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+          "assetBindings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["slot", "assetDigest", "rights", "altText"],
+              "properties": {
+                "slot": { "$ref": "#/$defs/id" },
+                "assetDigest": { "$ref": "#/$defs/sha256" },
+                "rights": { "enum": ["generated", "user-provided", "licensed", "public-domain", "unknown"] },
+                "altText": { "type": "string", "minLength": 1 }
+              }
+            }
+          },
+          "accessibilityText": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,63}$" },
+    "version": { "type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$" },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

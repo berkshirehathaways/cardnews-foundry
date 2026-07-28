@@ -1,0 +1,40 @@
+{
+  "contract": "EditorialBrief",
+  "valid": {
+    "schemaVersion": "1.0.0",
+    "briefId": "brief-1",
+    "sourceEnvelopeDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "audience": "General readers",
+    "thesis": "Evidence can be presented clearly.",
+    "claims": [{ "id": "claim-1", "text": "The source contains evidence.", "sourceSpanIds": ["span-1"] }],
+    "exclusions": ["Unsupported conclusions"],
+    "tone": "Clear",
+    "cardCountIntent": 2
+  },
+  "invalid": {
+    "expectedCode": "SCHEMA_TYPE",
+    "data": {
+      "schemaVersion": "1.0.0",
+      "briefId": "brief-1",
+      "sourceEnvelopeDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "audience": "Readers",
+      "thesis": "Thesis",
+      "claims": [{ "id": "claim-1", "text": "Claim", "sourceSpanIds": ["span-1"] }],
+      "exclusions": [],
+      "tone": "Clear",
+      "cardCountIntent": "two"
+    }
+  },
+  "forwardMinor": {
+    "schemaVersion": "1.7.0",
+    "briefId": "brief-1",
+    "sourceEnvelopeDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "audience": "Readers",
+    "thesis": "Thesis",
+    "claims": [{ "id": "claim-1", "text": "Claim", "sourceSpanIds": ["span-1"] }],
+    "exclusions": [],
+    "tone": "Clear",
+    "cardCountIntent": 2
+  },
+  "unsupportedMajor": { "schemaVersion": "2.0.0" }
+}

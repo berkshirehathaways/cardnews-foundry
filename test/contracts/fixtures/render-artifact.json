@@ -1,0 +1,46 @@
+{
+  "contract": "RenderArtifact",
+  "valid": {
+    "schemaVersion": "1.0.0",
+    "artifactId": "artifact-1",
+    "renderSpecDigest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "cardId": "card-1",
+    "relativePath": "render/cards/card-1.png",
+    "mediaType": "image/png",
+    "mediaSignature": "89504e470d0a1a0a",
+    "width": 1080,
+    "height": 1350,
+    "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "dependencyDigests": ["eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"]
+  },
+  "invalid": {
+    "expectedCode": "SCHEMA_PATTERN",
+    "data": {
+      "schemaVersion": "1.0.0",
+      "artifactId": "artifact-1",
+      "renderSpecDigest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "cardId": "card-1",
+      "relativePath": "/private/card-1.png",
+      "mediaType": "image/png",
+      "mediaSignature": "89504e470d0a1a0a",
+      "width": 1080,
+      "height": 1350,
+      "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "dependencyDigests": ["eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"]
+    }
+  },
+  "forwardMinor": {
+    "schemaVersion": "1.7.0",
+    "artifactId": "artifact-1",
+    "renderSpecDigest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "cardId": "card-1",
+    "relativePath": "render/cards/card-1.png",
+    "mediaType": "image/png",
+    "mediaSignature": "89504e470d0a1a0a",
+    "width": 1080,
+    "height": 1350,
+    "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "dependencyDigests": ["eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"]
+  },
+  "unsupportedMajor": { "schemaVersion": "2.0.0" }
+}

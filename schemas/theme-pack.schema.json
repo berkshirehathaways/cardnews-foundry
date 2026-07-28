@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cardnews-foundry.example/schemas/theme-pack.schema.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["schemaVersion", "themeId", "targetCompatibility", "assets", "tokens", "layoutVariants"],
+  "properties": {
+    "schemaVersion": { "const": "2.0.0" },
+    "themeId": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "targetCompatibility": { "type": "object", "additionalProperties": false, "required": ["targetSchemaMajor", "targetIds"], "properties": { "targetSchemaMajor": { "const": 1 }, "targetIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" } } } },
+    "assets": { "type": "object", "additionalProperties": false, "required": ["sourcePolicy"], "properties": { "sourcePolicy": { "const": "local-none" } } },
+    "tokens": { "type": "object", "additionalProperties": false, "required": ["colors", "typography", "spacing", "radii", "strokes", "shadows"], "properties": { "colors": { "$ref": "#/$defs/colors" }, "typography": { "$ref": "#/$defs/typography" }, "spacing": { "type": "array", "minItems": 5, "uniqueItems": true, "items": { "type": "integer", "minimum": 0 } }, "radii": { "$ref": "#/$defs/radii" }, "strokes": { "$ref": "#/$defs/strokes" }, "shadows": { "$ref": "#/$defs/shadows" } } },
+    "layoutVariants": { "type": "array", "minItems": 2, "uniqueItems": true, "items": { "$ref": "#/$defs/layoutVariant" } }
+  },
+  "$defs": {
+    "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+    "colors": { "type": "object", "additionalProperties": false, "required": ["canvas", "surface", "textPrimary", "textSecondary", "accent", "rule"], "properties": { "canvas": { "$ref": "#/$defs/color" }, "surface": { "$ref": "#/$defs/color" }, "textPrimary": { "$ref": "#/$defs/color" }, "textSecondary": { "$ref": "#/$defs/color" }, "accent": { "$ref": "#/$defs/color" }, "rule": { "$ref": "#/$defs/color" } } },
+    "font": { "type": "object", "additionalProperties": false, "required": ["family", "file", "weight", "license"], "properties": { "family": { "const": "Noto Sans CJK KR" }, "file": { "type": "string", "pattern": "^fonts/NotoSansCJKkr-(Regular|Bold)\\.otf$" }, "weight": { "type": "string", "pattern": "^[A-Za-z]+$" }, "license": { "const": "OFL-1.1" } } },
+    "typeRole": { "type": "object", "additionalProperties": false, "required": ["font", "size", "lineHeight", "tracking"], "properties": { "font": { "$ref": "#/$defs/font" }, "size": { "type": "integer", "minimum": 12 }, "lineHeight": { "type": "number", "minimum": 1, "maximum": 2 }, "tracking": { "type": "number", "minimum": -0.1, "maximum": 0.2 } } },
+    "typography": { "type": "object", "additionalProperties": false, "required": ["display", "headline", "body", "caption"], "properties": { "display": { "$ref": "#/$defs/typeRole" }, "headline": { "$ref": "#/$defs/typeRole" }, "body": { "$ref": "#/$defs/typeRole" }, "caption": { "$ref": "#/$defs/typeRole" } } },
+    "radii": { "type": "object", "additionalProperties": false, "required": ["small", "medium", "large"], "properties": { "small": { "type": "integer", "minimum": 0 }, "medium": { "type": "integer", "minimum": 0 }, "large": { "type": "integer", "minimum": 0 } } },
+    "strokes": { "type": "object", "additionalProperties": false, "required": ["hairline", "standard"], "properties": { "hairline": { "type": "integer", "minimum": 1 }, "standard": { "type": "integer", "minimum": 1 } } },
+    "shadows": { "type": "object", "additionalProperties": false, "required": ["soft", "strong"], "properties": { "soft": { "$ref": "#/$defs/shadow" }, "strong": { "$ref": "#/$defs/shadow" } } },
+    "shadow": { "type": "object", "additionalProperties": false, "required": ["x", "y", "blur", "color"], "properties": { "x": { "type": "integer" }, "y": { "type": "integer" }, "blur": { "type": "integer", "minimum": 0 }, "color": { "$ref": "#/$defs/color" } } },
+    "layoutVariant": { "type": "object", "additionalProperties": false, "required": ["id", "safeArea", "grid"], "properties": { "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" }, "safeArea": { "enum": ["standard", "compact"] }, "grid": { "type": "object", "additionalProperties": false, "required": ["columns", "gutter"], "properties": { "columns": { "type": "integer", "minimum": 1, "maximum": 12 }, "gutter": { "type": "integer", "minimum": 0 } } } } }
+  }
+}

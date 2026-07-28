@@ -1,0 +1,58 @@
+{
+  "contract": "VisualRecipe",
+  "valid": {
+    "schemaVersion": "1.0.0",
+    "recipeId": "recipe-1",
+    "storyboardDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "targetId": "instagram-portrait",
+    "themeId": "minimal",
+    "cards": [{
+      "cardId": "card-1",
+      "composition": "headline",
+      "mood": "Focused",
+      "emphasis": ["evidence"],
+      "assetBindings": [{
+        "slot": "hero",
+        "assetDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "rights": "generated",
+        "altText": "Abstract evidence illustration"
+      }],
+      "accessibilityText": "Headline and evidence summary"
+    }]
+  },
+  "invalid": {
+    "expectedCode": "SCHEMA_ADDITIONALPROPERTIES",
+    "data": {
+      "schemaVersion": "1.0.0",
+      "recipeId": "recipe-1",
+      "storyboardDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "targetId": "instagram-portrait",
+      "themeId": "minimal",
+      "cards": [{
+        "cardId": "card-1",
+        "composition": "headline",
+        "mood": "Focused",
+        "emphasis": [],
+        "assetBindings": [],
+        "accessibilityText": "Summary",
+        "modelParameters": { "temperature": 0.2 }
+      }]
+    }
+  },
+  "forwardMinor": {
+    "schemaVersion": "1.7.0",
+    "recipeId": "recipe-1",
+    "storyboardDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "targetId": "instagram-portrait",
+    "themeId": "minimal",
+    "cards": [{
+      "cardId": "card-1",
+      "composition": "headline",
+      "mood": "Focused",
+      "emphasis": [],
+      "assetBindings": [],
+      "accessibilityText": "Summary"
+    }]
+  },
+  "unsupportedMajor": { "schemaVersion": "2.0.0" }
+}

@@ -1,0 +1,49 @@
+{
+  "contract": "Storyboard",
+  "valid": {
+    "schemaVersion": "1.0.0",
+    "storyboardId": "storyboard-1",
+    "editorialBriefDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "cards": [{
+      "id": "card-1",
+      "order": 0,
+      "role": "hook",
+      "headline": "A concise headline",
+      "body": "A source-linked body.",
+      "claimIds": ["claim-1"],
+      "sourceSpanIds": ["span-1"]
+    }]
+  },
+  "invalid": {
+    "expectedCode": "SCHEMA_MINITEMS",
+    "data": {
+      "schemaVersion": "1.0.0",
+      "storyboardId": "storyboard-1",
+      "editorialBriefDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "cards": [{
+        "id": "card-1",
+        "order": 0,
+        "role": "hook",
+        "headline": "Headline",
+        "body": "Body",
+        "claimIds": ["claim-1"],
+        "sourceSpanIds": []
+      }]
+    }
+  },
+  "forwardMinor": {
+    "schemaVersion": "1.7.0",
+    "storyboardId": "storyboard-1",
+    "editorialBriefDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "cards": [{
+      "id": "card-1",
+      "order": 0,
+      "role": "hook",
+      "headline": "Headline",
+      "body": "Body",
+      "claimIds": ["claim-1"],
+      "sourceSpanIds": ["span-1"]
+    }]
+  },
+  "unsupportedMajor": { "schemaVersion": "2.0.0" }
+}

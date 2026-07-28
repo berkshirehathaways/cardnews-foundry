@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stevenshin.github.io/cardnews-foundry/schemas/editorial-brief.schema.json",
+  "title": "EditorialBrief",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "briefId", "sourceEnvelopeDigest", "audience", "thesis", "claims", "exclusions", "tone", "cardCountIntent"],
+  "properties": {
+    "schemaVersion": { "$ref": "#/$defs/version" },
+    "briefId": { "$ref": "#/$defs/id" },
+    "sourceEnvelopeDigest": { "$ref": "#/$defs/sha256" },
+    "audience": { "type": "string", "minLength": 1 },
+    "thesis": { "type": "string", "minLength": 1 },
+    "claims": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "text", "sourceSpanIds"],
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "text": { "type": "string", "minLength": 1 },
+          "sourceSpanIds": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/id" } }
+        }
+      }
+    },
+    "exclusions": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "tone": { "type": "string", "minLength": 1 },
+    "cardCountIntent": { "type": "integer", "minimum": 2, "maximum": 20 }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,63}$" },
+    "version": { "type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$" },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

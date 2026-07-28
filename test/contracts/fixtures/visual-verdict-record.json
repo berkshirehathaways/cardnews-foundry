@@ -1,0 +1,46 @@
+{
+  "contract": "VisualVerdictRecord",
+  "valid": {
+    "schemaVersion": "1.0.0",
+    "verdictId": "verdict-1",
+    "renderSetDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+    "captureSetDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+    "sourceRevision": "revision-1",
+    "reviewer": { "id": "reviewer-1", "kind": "codex" },
+    "evidenceIdentity": { "paths": ["reports/contact-sheet.png"], "capturedAt": "2026-01-01T00:00:00Z" },
+    "category": "visual-fidelity",
+    "differences": [],
+    "blockers": [],
+    "verdict": "PASS"
+  },
+  "invalid": {
+    "expectedCode": "SCHEMA_REQUIRED",
+    "data": {
+      "schemaVersion": "1.0.0",
+      "verdictId": "verdict-1",
+      "renderSetDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "captureSetDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "sourceRevision": "revision-1",
+      "reviewer": { "id": "reviewer-1", "kind": "codex" },
+      "evidenceIdentity": { "paths": ["reports/contact-sheet.png"] },
+      "category": "visual-fidelity",
+      "differences": [],
+      "blockers": [],
+      "verdict": "PASS"
+    }
+  },
+  "forwardMinor": {
+    "schemaVersion": "1.7.0",
+    "verdictId": "verdict-1",
+    "renderSetDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+    "captureSetDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+    "sourceRevision": "revision-1",
+    "reviewer": { "id": "reviewer-1", "kind": "codex" },
+    "evidenceIdentity": { "paths": ["reports/contact-sheet.png"], "capturedAt": "2026-01-01T00:00:00Z" },
+    "category": "visual-fidelity",
+    "differences": [],
+    "blockers": [],
+    "verdict": "PASS"
+  },
+  "unsupportedMajor": { "schemaVersion": "2.0.0" }
+}

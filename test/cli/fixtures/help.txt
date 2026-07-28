@@ -1,0 +1,19 @@
+Usage: cardnews <command> [options]
+
+Commands:
+  init
+  ingest
+  scaffold-record
+  commit-record
+  validate
+  import-asset
+  render
+  evaluate
+  status
+  resume
+  package
+
+Common options:
+  --json
+  --force
+  --help
