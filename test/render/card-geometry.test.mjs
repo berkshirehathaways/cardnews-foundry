@@ -177,6 +177,25 @@ const renderCardsInBrowser = async ({ executablePath, cardIds }) => {
   return reports;
 };
 
+test("Given a generated mood prefixed by a list separator, When the footer is composed, Then metadata has one separator", async () => {
+  const { loadRenderInput } = await import("../../src/render/input.mjs");
+  const { buildCardHtml } = await import("../../src/render/card.mjs");
+  const input = await loadRenderInput({ repositoryRoot: root, fixtureRoot });
+  const card = input.storyboard.cards[6];
+  const recipeCard = {
+    ...input.recipe.cards[6],
+    mood: " · 이어진 봉투들이 만드는 따뜻한 전시",
+  };
+
+  const html = buildCardHtml({ card, recipeCard, input });
+  const footerText = html.match(/<footer class="provenance-footer"[^>]*>([\s\S]*?)<\/footer>/u)?.[1]
+    .replace(/<[^>]+>/gu, "")
+    .replace(/\s+/gu, " ")
+    .trim();
+
+  assert.equal(footerText, "closing · 이어진 봉투들이 만드는 따뜻한 전시 card-7");
+});
+
 test("Given all production cards, When pinned Chromium measures flow and text paint geometry, Then every region fits without collision", async () => {
   // Given
   const cardIds = Array.from({ length: 7 }, (_, index) => `card-${index + 1}`);

@@ -13,8 +13,10 @@ const media = (recipeCard, assets) => recipeCard.assetBindings.map((binding) => 
   <div class="media-viewport"><img src="${imageFor(binding, assets)}" alt="${escapeHtml(binding.altText)}"></div>
 </figure>`).join("");
 
+const footerMood = (value) => value.replace(/^(?:\s*·)+\s*/u, "").trim();
+
 const footer = (card, recipeCard) => `<footer class="provenance-footer" data-box>
-  <span>${escapeHtml(card.role)} · ${semanticKoreanHtml(recipeCard.mood)}</span>
+  <span>${escapeHtml(card.role)} · ${semanticKoreanHtml(footerMood(recipeCard.mood))}</span>
   <span>${escapeHtml(card.id)}</span>
 </footer>`;
 
