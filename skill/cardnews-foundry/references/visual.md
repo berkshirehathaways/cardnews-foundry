@@ -30,6 +30,15 @@ raw captures for Pass B without copying Pass A's findings. Record two truthful,
 distinct Codex reviewer IDs and verdict IDs. Do not stop at a missing-verdict
 package response when the user asked for a finished ZIP.
 
+Use the contact sheet for inventory and sequence, not for pixel-level defect
+claims. Before reporting clipping, collision, or overlap, reopen each affected
+card at original resolution and confirm the exact elements and location with
+visible pixel occlusion or measured intersecting bounds. Intentionally
+left/right-aligned footer items are not overlapping merely because both appear
+on one baseline. If the original card and deterministic geometry show
+separation, record no blocking defect; never infer one from scaled text,
+anti-aliasing, or contact-sheet compression.
+
 Write review inputs to `<job>/drafts/visual-pass-a.input.json` and
 `<job>/drafts/visual-pass-b.input.json`. The package command alone owns the
 canonical immutable `reports/visual-pass-a.json` and
