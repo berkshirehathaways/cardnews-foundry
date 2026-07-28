@@ -144,7 +144,8 @@ test("Given target cards and showcase states, When Korean phrase ranges are meas
   try {
     const page = await browser.newPage({ viewport: input.target.dimensions });
     for (const [cardId, phrase] of [
-      ["card-2", "세 개씩"],
+      ["card-2", "매달 세 개씩"],
+      ["card-3", "다음 화분의"],
       ["card-4", "기록은 답안지가 아니라"],
       ["card-5", "실행할 명령"],
       ["card-6", "스물네 집 중 열여덟 집이"],
