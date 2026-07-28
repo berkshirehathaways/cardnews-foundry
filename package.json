@@ -2,6 +2,21 @@
   "name": "cardnews-foundry",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/berkshirehathaways/cardnews-foundry"
+  },
+  "homepage": "https://github.com/berkshirehathaways/cardnews-foundry#readme",
+  "bugs": {
+    "url": "https://github.com/berkshirehathaways/cardnews-foundry/issues"
+  },
+  "keywords": [
+    "codex",
+    "korean",
+    "cardnews",
+    "playwright"
+  ],
   "type": "module",
   "bin": {
     "cardnews": "./bin/cardnews"

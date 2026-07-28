@@ -6,12 +6,35 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const packagePath = path.join(repositoryRoot, "package.json");
 const workflowPath = path.join(repositoryRoot, ".github", "workflows", "ci.yml");
 
 const actionPins = new Map([
   ["actions/checkout", "11d5960a326750d5838078e36cf38b85af677262"],
   ["actions/setup-node", "49933ea5288caeca8642d1e84afbd3f7d6820020"],
 ]);
+
+test("Given the package manifest, When public metadata is audited, Then repository discovery is precise without enabling publication", async () => {
+  // Given
+  const packageJson = JSON.parse(await readFile(packagePath, "utf8"));
+
+  // When / Then
+  assert.equal(packageJson.license, "Apache-2.0");
+  assert.deepEqual(packageJson.repository, {
+    type: "git",
+    url: "https://github.com/berkshirehathaways/cardnews-foundry",
+  });
+  assert.equal(packageJson.homepage, "https://github.com/berkshirehathaways/cardnews-foundry#readme");
+  assert.deepEqual(packageJson.bugs, {
+    url: "https://github.com/berkshirehathaways/cardnews-foundry/issues",
+  });
+  assert.deepEqual(packageJson.keywords, ["codex", "korean", "cardnews", "playwright"]);
+  assert.equal(packageJson.private, true);
+  assert.deepEqual(
+    Object.keys(packageJson.scripts).filter((scriptName) => /(?:publish|deploy)/iu.test(scriptName)),
+    [],
+  );
+});
 
 test("Given the CI workflow, When its trust boundary is audited, Then YAML, action pins, permissions, and secret isolation are exact", async () => {
   // Given
