@@ -13,6 +13,7 @@ const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url))
 const minute = 60 * 1_000;
 const defaultHardKillGraceMs = 10_000;
 const defaultMaxOutputBytes = 16 * 1024 * 1024;
+const failureExcerptCharacters = 8_192;
 
 export const CLEAN_CLONE_SETUP_RESERVE_MS = 15 * minute;
 
@@ -126,6 +127,13 @@ export const invokeBounded = (command, args, options) => new Promise((resolve, r
   });
 });
 
+export const boundedFailureExcerpt = (stdout, stderr) => {
+  const combined = [stdout, stderr].filter((value) => value.length > 0).join("\n");
+  if (combined.length <= failureExcerptCharacters) return combined;
+  const omitted = combined.length - failureExcerptCharacters;
+  return `[${omitted} earlier characters omitted]\n${combined.slice(-failureExcerptCharacters)}`;
+};
+
 const run = async ({ label, command, args, checkoutRoot, environment, logs, timeoutMs }) => {
   const startedAt = new Date().toISOString();
   const result = await invokeBounded(command, args, {
@@ -147,7 +155,11 @@ const run = async ({ label, command, args, checkoutRoot, environment, logs, time
     throw new Error(`${label} exceeded the ${defaultMaxOutputBytes}-byte output limit`);
   }
   if (result.code !== 0) {
-    throw new Error(`${label} failed with exit ${result.code}`);
+    const excerpt = boundedFailureExcerpt(result.stdout, result.stderr);
+    throw new Error([
+      `${label} failed with exit ${result.code}`,
+      excerpt,
+    ].filter((value) => value.length > 0).join("\n"));
   }
   return {
     label,

@@ -10,6 +10,7 @@ import {
 } from "../../scripts/clean-clone-source.mjs";
 import {
   CLEAN_CLONE_SETUP_RESERVE_MS,
+  boundedFailureExcerpt,
   createCleanCloneCommands,
   createCleanCloneTemporaryRoot,
   createIsolatedEnvironment,
@@ -168,6 +169,21 @@ test("Given a child that floods output, When the combined output limit is exceed
 
   assert.equal(result.outputLimitExceeded, true);
   assert.ok(Buffer.byteLength(result.stdout) + Buffer.byteLength(result.stderr) <= 1024);
+});
+
+test("Given a long failed command log, When its diagnostic is formatted, Then only a bounded tail is exposed", () => {
+  const beginning = "BEGINNING_SHOULD_BE_OMITTED";
+  const ending = "ENDING_SHOULD_REMAIN";
+  const excerpt = boundedFailureExcerpt(
+    `${beginning}${"x".repeat(9_000)}${ending}`,
+    "stderr-tail",
+  );
+
+  assert.equal(excerpt.includes(beginning), false);
+  assert.equal(excerpt.includes(ending), true);
+  assert.equal(excerpt.includes("stderr-tail"), true);
+  assert.match(excerpt, /^\[\d+ earlier characters omitted\]\n/);
+  assert.ok(excerpt.length < 8_300);
 });
 
 test("Given an unborn repository with ignored private residue, When a clean checkout is created, Then source files and executable bits survive while residue is absent", async (context) => {
