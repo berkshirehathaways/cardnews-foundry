@@ -113,6 +113,12 @@ export const runReleaseQa = async ({
   if (cleanCloneSummary.ok !== true) {
     throw new ReleaseQaError("QA_RELEASE_CLEAN_CLONE_FAILED", "verify:clean-clone did not report success");
   }
+  if (head.exists) {
+    const cleanCloneCommit = cleanCloneSummary.source?.commit;
+    if (typeof cleanCloneCommit !== "string" || cleanCloneCommit.toLowerCase() !== sha.toLowerCase()) {
+      throw new ReleaseQaError("QA_RELEASE_CLEAN_CLONE_SHA_MISMATCH", "verify:clean-clone source commit does not match the selected SHA");
+    }
+  }
 
   const report = {
     schemaVersion: 1,

@@ -133,3 +133,26 @@ test("runReleaseQa binds a repository with HEAD to the exact commit SHA and reje
     (error) => error.code === "QA_RELEASE_SHA_MISMATCH" && error.exitClass === 6,
   );
 });
+
+test("runReleaseQa rejects a successful clean-clone summary whose source commit is stale", async (context) => {
+  const root = await prepareRepo(true);
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const headSha = "1234567890abcdef1234567890abcdef12345678";
+  const { run } = createRunner({
+    headExists: true,
+    headSha,
+    cleanCloneSummary: {
+      ok: true,
+      source: { mode: "tracked-head", commit: "fedcba9876543210fedcba9876543210fedcba98" },
+      isolation: { cachesRootedInTemporaryDirectory: true },
+      artifacts: { sourceArchiveSha256: "22".repeat(32) },
+      commands: [{ label: "14-release-dry-run" }],
+      cleanup: { removed: true },
+    },
+  });
+
+  await assert.rejects(
+    () => runReleaseQa({ evidenceRoot: path.join(root, "evidence"), sha: headSha, run }),
+    (error) => error.code === "QA_RELEASE_CLEAN_CLONE_SHA_MISMATCH" && error.exitClass === 6,
+  );
+});
