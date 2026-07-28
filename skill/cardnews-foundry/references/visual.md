@@ -30,6 +30,11 @@ raw captures for Pass B without copying Pass A's findings. Record two truthful,
 distinct Codex reviewer IDs and verdict IDs. Do not stop at a missing-verdict
 package response when the user asked for a finished ZIP.
 
+Write review inputs to `<job>/drafts/visual-pass-a.input.json` and
+`<job>/drafts/visual-pass-b.input.json`. The package command alone owns the
+canonical immutable `reports/visual-pass-a.json` and
+`reports/visual-pass-b.json` outputs; never use those reserved paths as inputs.
+
 Require both reviews to reference the same current render set, source revision,
 evidence paths, capture timestamp, and complete capture set. Any missing card,
 stale evidence, blocking clipping, broken Korean phrase, or inconsistent digest

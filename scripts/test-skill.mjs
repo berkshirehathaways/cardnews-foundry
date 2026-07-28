@@ -12,7 +12,13 @@ try {
 
 const result = spawnSync(
   process.execPath,
-  ["--test", "--test-concurrency=1", "test/skill/lifecycle.test.mjs", "test/skill/test-skill-options.test.mjs"],
+  [
+    "--test",
+    "--test-concurrency=1",
+    "test/skill/completion-contract.test.mjs",
+    "test/skill/lifecycle.test.mjs",
+    "test/skill/test-skill-options.test.mjs",
+  ],
   { env: { ...process.env, CARDNEWS_SKILL_TARGET: options.target }, stdio: "inherit" },
 );
 if (result.status !== 0 || !options.freshContext) process.exit(result.status ?? 1);
