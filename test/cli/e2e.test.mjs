@@ -179,7 +179,7 @@ test("Given two fresh fixture roots and a sentinel user job, When each render pr
   const failHeadSync = path.join(retryWorkspace, "fail-evaluate-head-sync.cjs");
   await writeFile(
     failHeadSync,
-    "const fs=require('node:fs');if(process.argv[3]==='job'&&process.argv[4]==='atomic-write'&&process.argv[5]==='head.json'){fs.fsyncSync=()=>{const error=new Error('forced evaluate head sync failure');error.code='EIO';throw error;};}\n",
+    "const fs=require('node:fs');const mod=require('node:module');if(process.argv[3]==='job'&&process.argv[4]==='atomic-write'&&process.argv[5]==='head.json'){fs.fsyncSync=()=>{const error=new Error('forced evaluate head sync failure');error.code='EIO';throw error;};mod.syncBuiltinESMExports();}\n",
   );
   const interruptedEvaluation = await runJson(
     retryWorkspace,

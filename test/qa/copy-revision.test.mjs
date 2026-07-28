@@ -6,6 +6,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { buildFixtureJob, runCardnews } from "../../scripts/qa-fixture-job.mjs";
 import { openJob } from "../../src/cli/job.ts";
+import { createPrivateProjection } from "../../src/cli/projection.ts";
 import { prepareRecordRevision } from "../../src/cli/revision.ts";
 import { createJobRevision } from "../../src/jobs/index.ts";
 
@@ -60,7 +61,7 @@ test("Given an accepted storyboard receipt, When copy changes with force, Then t
   }
 });
 
-test("Given an asset leaf replaced by an escaping symlink, When revision state is copied, Then no link or outside bytes enter the revision", async (context) => {
+test("Given an asset leaf replaced by an escaping symlink, When revision or projection state is copied, Then outside bytes never enter private state", async (context) => {
   // Given
   const workspace = await mkdtemp(path.join(os.tmpdir(), "cardnews-copy-asset-link-"));
   context.after(() => rm(workspace, { recursive: true, force: true }));
@@ -90,6 +91,10 @@ test("Given an asset leaf replaced by an escaping symlink, When revision state i
 
   // Then
   await assert.rejects(copying, (error) => error.code === "SYMLINK_ESCAPE");
+  await assert.rejects(
+    createPrivateProjection(original),
+    (error) => error.code === "SYMLINK_ESCAPE",
+  );
   assert.deepEqual(await readFile(outside), outsideBytes);
   await assert.rejects(
     lstat(path.join(revision.path, "assets", assetDigest, assetName)),
