@@ -49,6 +49,13 @@ try {
   if (scopeSegments.some((segment) => segment === "" || segment === "." || segment === "..")) {
     fail("PATH_ESCAPE", "anchored directory scope is invalid", scope);
   }
+  if (
+    !["job", "records", "drafts", "source", "source/raw", "source/extracted", "reports", "assets"]
+      .includes(scope) &&
+    !/^assets\/[a-f0-9]{64}$/u.test(scope)
+  ) {
+    fail("PATH_ESCAPE", "anchored directory scope is not approved", scope);
+  }
   const headTarget = `${"../".repeat(scopeSegments.length)}head.json`;
   let head;
   try {

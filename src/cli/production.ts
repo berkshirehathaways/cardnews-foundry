@@ -3,7 +3,7 @@ import path from "node:path";
 import { importAsset } from "../assets/index.ts";
 import { canonicalJson, validateContract, type EvaluationReport } from "../contracts/index.ts";
 import { evaluateGateMatrix, GATE_IDS, loadEvaluationInput } from "../evaluate/index.mjs";
-import { commitStage } from "../jobs/index.ts";
+import { commitStage, getJobStatus } from "../jobs/index.ts";
 import {
   createAnchoredExclusive,
   readAnchoredText,
@@ -230,7 +230,19 @@ export const evaluateCommand = async (args: ParsedArgs): Promise<unknown> => {
       0o400
     );
     if (!created) throw new CliError("qa", "REPORT_EXISTS", "evaluation report already exists");
-    const digest = await commitStage(job, { stage: "evaluate", value: report });
+    let digest: string;
+    try {
+      digest = await commitStage(job, { stage: "evaluate", value: report });
+    } catch (error) {
+      const accepted = (await getJobStatus(job)).stages.find(
+        (stage) => stage.stage === "evaluate" && stage.state === "valid"
+      );
+      if (accepted?.digest === undefined) {
+        await removeAnchored(job, "reports", "evaluation-report.json", true);
+        throw error;
+      }
+      digest = accepted.digest;
+    }
     return {
       jobId: job.id,
       reportPath: displayPath(reportPath),

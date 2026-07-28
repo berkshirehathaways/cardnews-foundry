@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
-import { cp, mkdir, mkdtemp, readFile, readdir, rm, rmdir, writeFile } from "node:fs/promises";
+import { access, cp, mkdir, mkdtemp, readFile, readdir, rm, rmdir, writeFile } from "node:fs/promises";
 import { watch } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -176,6 +176,21 @@ test("Given two fresh fixture roots and a sentinel user job, When each render pr
   const retryWorkspace = interruptionRoots[1];
   assert.notEqual(retryWorkspace, undefined);
   const rendered = await runJson(retryWorkspace, ["render", "--job", job]);
+  const failHeadSync = path.join(retryWorkspace, "fail-evaluate-head-sync.cjs");
+  await writeFile(
+    failHeadSync,
+    "const fs=require('node:fs');if(process.argv[3]==='job'&&process.argv[4]==='atomic-write'&&process.argv[5]==='head.json'){fs.fsyncSync=()=>{const error=new Error('forced evaluate head sync failure');error.code='EIO';throw error;};}\n",
+  );
+  const interruptedEvaluation = await runJson(
+    retryWorkspace,
+    ["evaluate", "--job", job, "--deterministic-only"],
+    2,
+    { NODE_OPTIONS: `--require=${failHeadSync}` },
+  );
+  await assert.rejects(
+    access(path.join(retryWorkspace, job, "reports", "evaluation-report.json")),
+    (error) => error.code === "ENOENT",
+  );
   const evaluated = await runJson(retryWorkspace, ["evaluate", "--job", job, "--deterministic-only"]);
   const packaged = await runJson(retryWorkspace, ["package", "--job", job], 6);
   const status = await runJson(retryWorkspace, ["status", "--job", job]);
@@ -201,6 +216,7 @@ test("Given two fresh fixture roots and a sentinel user job, When each render pr
   );
   assert.equal((await readFile(sentinelFile)).equals(sentinelBytes), true);
   assert.deepEqual((await privateProjectionResidue()).filter((name) => name !== sentinelName), []);
+  assert.equal(interruptedEvaluation.output.error.code, "EIO");
   assert.equal(evaluated.output.result.blocking, false);
   assert.equal(packaged.output.error.class, "package");
   assert.equal(packaged.output.error.code, "VISUAL_VERDICT_MISSING");

@@ -1,30 +1,41 @@
-import { cp, readdir } from "node:fs/promises";
-import path from "node:path";
 import type { JobHandle } from "../jobs/index.ts";
 import {
   createAnchoredExclusive,
+  listAnchored,
+  mkdirAnchored,
   readAnchoredBytes,
   readAnchoredText
 } from "#jobs/anchored";
-import { resolveJobTarget } from "#jobs/paths";
 import {
   ensureJobDirectories,
   readJobMetadata,
   writeJobMetadata
 } from "./job.ts";
 
-const copyDirectoryEntries = async (
-  original: JobHandle,
-  relativeDirectory: string,
-  destination: string
-): Promise<void> => {
-  const source = await resolveJobTarget(original, relativeDirectory);
-  for (const name of await readdir(source)) {
-    await resolveJobTarget(original, path.join(relativeDirectory, name));
-    await cp(path.join(source, name), path.join(destination, name), {
-      recursive: true,
-      errorOnExist: true
-    });
+const copyAssets = async (original: JobHandle, revision: JobHandle): Promise<void> => {
+  for (const digest of await listAnchored(original, "assets")) {
+    if (!/^[a-f0-9]{64}$/u.test(digest)) throw new Error("asset directory is malformed");
+    const scope = `assets/${digest}` as const;
+    const names = [...await listAnchored(original, scope)].sort();
+    const assetNames = names.filter((name) => /^asset\.(?:jpg|png)$/u.test(name));
+    if (
+      names.length !== 2 ||
+      !names.includes("metadata.json") ||
+      assetNames.length !== 1
+    ) {
+      throw new Error("asset inventory is malformed");
+    }
+    await mkdirAnchored(revision, "assets", digest);
+    for (const name of names) {
+      const created = await createAnchoredExclusive(
+        revision,
+        scope,
+        name,
+        await readAnchoredBytes(original, scope, name),
+        0o400
+      );
+      if (!created) throw new Error("revision asset already exists");
+    }
   }
 };
 
@@ -76,5 +87,5 @@ export const prepareRecordRevision = async (
   await ensureJobDirectories(revision);
   await writeJobMetadata(revision, { ...metadata, revision: revision.revision });
   await copySourceEvidence(original, revision);
-  await copyDirectoryEntries(original, "assets", path.join(revision.path, "assets"));
+  await copyAssets(original, revision);
 };

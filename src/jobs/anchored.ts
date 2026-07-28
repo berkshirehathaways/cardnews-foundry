@@ -13,7 +13,9 @@ export type AnchoredDirectory =
   | "source"
   | "source/raw"
   | "source/extracted"
-  | "reports";
+  | "reports"
+  | "assets"
+  | `assets/${string}`;
 type Operation =
   | "read"
   | "list"

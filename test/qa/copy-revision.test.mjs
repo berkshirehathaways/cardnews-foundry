@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
-import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, lstat, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { buildFixtureJob, runCardnews } from "../../scripts/qa-fixture-job.mjs";
+import { openJob } from "../../src/cli/job.ts";
+import { prepareRecordRevision } from "../../src/cli/revision.ts";
+import { createJobRevision } from "../../src/jobs/index.ts";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const fixture = path.join(repositoryRoot, "fixtures", "synthetic");
@@ -55,4 +58,41 @@ test("Given an accepted storyboard receipt, When copy changes with force, Then t
       "metadata.json",
     ));
   }
+});
+
+test("Given an asset leaf replaced by an escaping symlink, When revision state is copied, Then no link or outside bytes enter the revision", async (context) => {
+  // Given
+  const workspace = await mkdtemp(path.join(os.tmpdir(), "cardnews-copy-asset-link-"));
+  context.after(() => rm(workspace, { recursive: true, force: true }));
+  const baseline = await buildFixtureJob({
+    runner,
+    fixture,
+    workspace,
+    slug: "copy-asset-link",
+    through: "render-ready",
+  });
+  const original = await openJob(path.join(workspace, baseline.job));
+  const revision = await createJobRevision(original);
+  const assetDigest = baseline.assets[0].output.result.assetDigest;
+  const originalAssetDirectory = path.join(original.path, "assets", assetDigest);
+  const assetName = (await readdir(originalAssetDirectory)).find(
+    (name) => /^asset\.(?:jpg|png)$/u.test(name),
+  );
+  assert.notEqual(assetName, undefined);
+  const outside = path.join(workspace, "outside-asset.bin");
+  const outsideBytes = Buffer.from("outside asset must remain outside");
+  await writeFile(outside, outsideBytes);
+  await rm(path.join(originalAssetDirectory, assetName));
+  await symlink(outside, path.join(originalAssetDirectory, assetName));
+
+  // When
+  const copying = prepareRecordRevision(original, revision);
+
+  // Then
+  await assert.rejects(copying, (error) => error.code === "SYMLINK_ESCAPE");
+  assert.deepEqual(await readFile(outside), outsideBytes);
+  await assert.rejects(
+    lstat(path.join(revision.path, "assets", assetDigest, assetName)),
+    (error) => error.code === "ENOENT",
+  );
 });
