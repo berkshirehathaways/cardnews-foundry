@@ -11,6 +11,7 @@ import {
 import {
   CLEAN_CLONE_SETUP_RESERVE_MS,
   createCleanCloneCommands,
+  createCleanCloneTemporaryRoot,
   createIsolatedEnvironment,
   invokeBounded,
   publishArtifact,
@@ -78,6 +79,23 @@ test("Given a caller environment containing secrets, When the clean-clone enviro
   assert.equal(environment.AWS_SECRET_ACCESS_KEY, undefined);
   assert.equal(environment.HOME, path.join("/isolated", "home"));
   assert.equal(environment.TMPDIR, path.join("/isolated", "tmp"));
+});
+
+test("Given a POSIX verifier that creates Unix sockets below TMPDIR, When the clean-clone root is allocated, Then the full socket path stays below the portable 104-byte boundary", async (context) => {
+  const temporaryRoot = await createCleanCloneTemporaryRoot({ platform: "darwin" });
+  context.after(() => rm(temporaryRoot, { recursive: true, force: true }));
+  const environment = createIsolatedEnvironment({
+    source: { PATH: process.env.PATH },
+    isolatedRoot: path.join(temporaryRoot, "isolated"),
+    platform: "darwin",
+  });
+  const socketPath = path.join(
+    environment.TMPDIR,
+    "cardnews-verify-ingest-XXXXXX",
+    "socket.md",
+  );
+
+  assert.ok(Buffer.byteLength(socketPath) < 104, socketPath);
 });
 
 test("Given a child that ignores graceful termination, When its deadline expires, Then the verifier escalates to a hard bounded stop", { skip: process.platform === "win32" }, async () => {

@@ -16,6 +16,14 @@ const defaultMaxOutputBytes = 16 * 1024 * 1024;
 
 export const CLEAN_CLONE_SETUP_RESERVE_MS = 15 * minute;
 
+export const createCleanCloneTemporaryRoot = ({
+  platform = process.platform,
+  systemTemporaryDirectory = os.tmpdir(),
+} = {}) => mkdtemp(path.join(
+  platform === "win32" ? systemTemporaryDirectory : "/tmp",
+  "cardnews-clean-clone-",
+));
+
 const evidenceDirectory = () => {
   const args = process.argv.slice(2).filter((value) => value !== "--");
   const index = args.indexOf("--evidence-dir");
@@ -255,7 +263,7 @@ export const createCleanCloneCommands = ({
 
 const verify = async () => {
   const requestedEvidence = evidenceDirectory();
-  const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "cardnews-clean-clone-"));
+  const temporaryRoot = await createCleanCloneTemporaryRoot();
   const durableRoot = requestedEvidence ?? path.join(temporaryRoot, "evidence");
   const logs = path.join(durableRoot, "logs");
   await mkdir(logs, { recursive: true });
