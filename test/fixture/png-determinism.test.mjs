@@ -8,10 +8,10 @@ const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 test("synthetic PNG bytes do not depend on the host zlib implementation", () => {
   assert.equal(
     sha256(makeSyntheticPng(0)),
-    "3daf4b20cf09ac9b7218f1f0506e1e9171b3114e92ae4a35b949996ebc189a3d",
+    "554a2698b99addfd629a64dccf696da9ed4f4cd7f17c01b984ff2a679d92290b",
   );
   assert.equal(
     sha256(makeSyntheticPng(1)),
-    "c44bbd1f114b33171aa4b311b0ea1a566e0b3b73ea1848bac7621df6bbcfbd51",
+    "b6baa3052899c6707fca66b9532e764921425aad4b4e51b419fd9a318950ff5f",
   );
 });

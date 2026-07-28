@@ -44,18 +44,29 @@ const stableDeflate = (bytes) => {
 };
 
 export const makeSyntheticPng = (variant) => {
-  const width = 320;
-  const height = 320;
+  const width = 640;
+  const height = 640;
+  const center = width / 2;
+  const blend = (background, foreground, coverage) =>
+    background.map((channel, index) =>
+      Math.round(channel + (foreground[index] - channel) * coverage)
+    );
   const scanlines = Buffer.alloc(height * (width * 3 + 1));
   for (let y = 0; y < height; y += 1) {
     const row = y * (width * 3 + 1);
     for (let x = 0; x < width; x += 1) {
       const offset = row + 1 + x * 3;
-      const orbit = Math.abs(Math.hypot(x - 160, y - 160) - 92) < 7;
-      const grid = x % 64 < 5 || y % 64 < 5;
-      const seed = (x - 160) ** 2 + (y - 160) ** 2 < 42 ** 2;
+      const radius = Math.hypot(x + 0.5 - center, y + 0.5 - center);
+      const orbitCoverage = Math.min(1, Math.max(0, 14.5 - Math.abs(radius - 184)));
+      const seedCoverage = Math.min(1, Math.max(0, 84.5 - radius));
+      const grid = x % 128 < 10 || y % 128 < 10;
+      const background = [246, 240, 228];
       const color = variant === 0
-        ? seed ? [201, 91, 43] : orbit ? [39, 107, 82] : [246, 240, 228]
+        ? blend(
+            blend(background, [39, 107, 82], orbitCoverage),
+            [201, 91, 43],
+            seedCoverage
+          )
         : grid ? [216, 205, 187] : x > y ? [23, 33, 43] : [82, 96, 109];
       scanlines[offset] = color[0];
       scanlines[offset + 1] = color[1];
