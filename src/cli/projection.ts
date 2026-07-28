@@ -3,7 +3,8 @@ import { mkdir, readFile, rm, rmdir, utimes, writeFile } from "node:fs/promises"
 import path from "node:path";
 import { canonicalJson, validateContract, validateContractChain } from "../contracts/index.ts";
 import type { JobHandle } from "../jobs/index.ts";
-import { listAnchored, readAnchoredBytes, readAnchoredText } from "#jobs/anchored";
+import { readAnchoredBytes, readAnchoredText } from "#jobs/anchored";
+import { readVerifiedAsset } from "./asset-integrity.ts";
 import { CliError } from "./errors.ts";
 import { ownInterruptCleanup } from "./interruption.ts";
 import { acceptedValue } from "./records.ts";
@@ -87,23 +88,18 @@ const assetDescriptors = async (
     if (typeof digest !== "string" || !/^[a-f0-9]{64}$/u.test(digest)) {
       throw new CliError("render", "ASSET_MISSING", "a bound asset has an invalid digest");
     }
-    const scope = `assets/${digest}` as const;
-    const names = await listAnchored(job, scope).catch((error: unknown) => {
+    const verified = await readVerifiedAsset(job, recipe, digest).catch((error: unknown) => {
       if (error instanceof Error && Reflect.get(error, "code") === "ENOENT") {
         throw new CliError("render", "ASSET_MISSING", "a bound asset has not been imported");
       }
       throw error;
     });
-    const assetName = names.find((name) => /^asset\.(?:png|jpg)$/u.test(name));
-    if (assetName === undefined) throw new CliError("render", "ASSET_MISSING", "asset bytes are missing");
-    const assetBytes = await readAnchoredBytes(job, scope, assetName);
-    const metadataBytes = await readAnchoredBytes(job, scope, "metadata.json");
     const destination = path.join(projectionRoot, "assets", digest);
     await mkdir(destination, { recursive: true });
     const assetTarget = path.join(destination, "asset.bin");
     const metadataTarget = path.join(destination, "metadata.json");
-    await writeFile(assetTarget, assetBytes, { flag: "wx", mode: 0o400 });
-    await writeFile(metadataTarget, metadataBytes, { flag: "wx", mode: 0o400 });
+    await writeFile(assetTarget, verified.assetBytes, { flag: "wx", mode: 0o400 });
+    await writeFile(metadataTarget, verified.metadataBytes, { flag: "wx", mode: 0o400 });
     const asset = await descriptor(`asset:${digest}`, assetTarget);
     const metadata = await descriptor(`asset-metadata:${digest}`, metadataTarget);
     assets.push({

@@ -11,27 +11,28 @@ import {
   readJobMetadata,
   writeJobMetadata
 } from "./job.ts";
+import { readVerifiedAsset } from "./asset-integrity.ts";
+import { acceptedValue } from "./records.ts";
 
-const copyAssets = async (original: JobHandle, revision: JobHandle): Promise<void> => {
+const copyAssets = async (
+  original: JobHandle,
+  revision: JobHandle,
+  recipe: unknown
+): Promise<void> => {
   for (const digest of await listAnchored(original, "assets")) {
     if (!/^[a-f0-9]{64}$/u.test(digest)) throw new Error("asset directory is malformed");
     const scope = `assets/${digest}` as const;
-    const names = [...await listAnchored(original, scope)].sort();
-    const assetNames = names.filter((name) => /^asset\.(?:jpg|png)$/u.test(name));
-    if (
-      names.length !== 2 ||
-      !names.includes("metadata.json") ||
-      assetNames.length !== 1
-    ) {
-      throw new Error("asset inventory is malformed");
-    }
+    const verified = await readVerifiedAsset(original, recipe, digest);
     await mkdirAnchored(revision, "assets", digest);
-    for (const name of names) {
+    for (const [name, bytes] of [
+      [verified.assetName, verified.assetBytes],
+      ["metadata.json", verified.metadataBytes]
+    ] as const) {
       const created = await createAnchoredExclusive(
         revision,
         scope,
         name,
-        await readAnchoredBytes(original, scope, name),
+        bytes,
         0o400
       );
       if (!created) throw new Error("revision asset already exists");
@@ -83,9 +84,12 @@ export const prepareRecordRevision = async (
   original: JobHandle,
   revision: JobHandle
 ): Promise<void> => {
-  const metadata = await readJobMetadata(original);
+  const [metadata, recipe] = await Promise.all([
+    readJobMetadata(original),
+    acceptedValue(original, "recipe")
+  ]);
   await ensureJobDirectories(revision);
   await writeJobMetadata(revision, { ...metadata, revision: revision.revision });
   await copySourceEvidence(original, revision);
-  await copyAssets(original, revision);
+  await copyAssets(original, revision, recipe);
 };
