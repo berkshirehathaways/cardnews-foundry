@@ -1,6 +1,6 @@
 import { escapeHtml, fontFaceCss, systemCss } from "./design.mjs";
 import { RenderError } from "./errors.mjs";
-import { semanticKoreanHtml } from "./korean.mjs";
+import { publicKoreanRole, semanticKoreanHtml } from "./korean.mjs";
 
 const imageFor = (binding, assets) => {
   const asset = assets.get(binding.assetDigest);
@@ -13,30 +13,30 @@ const media = (recipeCard, assets) => recipeCard.assetBindings.map((binding) => 
   <div class="media-viewport"><img src="${imageFor(binding, assets)}" alt="${escapeHtml(binding.altText)}"></div>
 </figure>`).join("");
 
-const footerMood = (value) => value.replace(/^(?:\s*·)+\s*/u, "").trim();
-
-const footer = (card, recipeCard) => `<footer class="provenance-footer" data-box>
-  <span>${escapeHtml(card.role)} · ${semanticKoreanHtml(footerMood(recipeCard.mood))}</span>
-  <span>${escapeHtml(card.id)}</span>
-</footer>`;
+const footer = () => '<footer class="provenance-footer" data-box aria-hidden="true"></footer>';
 
 const headline = (card, variant) => `<header class="headline-block" data-box data-variant="${variant}">
-  <span class="eyebrow">${escapeHtml(card.role)}</span>
+  <span class="eyebrow">${semanticKoreanHtml(publicKoreanRole(card.role))}</span>
   <h1>${semanticKoreanHtml(card.headline)}</h1>
 </header>`;
 
 const body = (card) =>
   `<div class="body-block" data-box><p>${semanticKoreanHtml(card.body)}</p></div>`;
 
-const emphasis = (recipeCard) =>
-  recipeCard.emphasis.map((value) => semanticKoreanHtml(value)).join(" · ");
+const emphasis = (values) => values.map((value) => semanticKoreanHtml(value)).join(" · ");
 
 const splitSupport = (card, recipeCard, assets) => recipeCard.assetBindings.length > 0
   ? media(recipeCard, assets)
   : `<div class="evidence-block" data-box data-state="inset">
-      <span class="evidence-label">${semanticKoreanHtml(recipeCard.mood)}</span>
-      <p>${emphasis(recipeCard)}</p>
+      <p>${emphasis(recipeCard.emphasis.slice(1)) || semanticKoreanHtml(publicKoreanRole(card.role))}</p>
     </div>`;
+
+const diagram = (recipeCard) => recipeCard.emphasis
+  .flatMap((value, index) => [
+    index === 0 ? "" : '<i aria-hidden="true"></i>',
+    `<span>${semanticKoreanHtml(value)}</span>`
+  ])
+  .join("");
 
 const composition = (card, recipeCard, assets) => {
   switch (recipeCard.composition) {
@@ -47,8 +47,7 @@ const composition = (card, recipeCard, assets) => {
       return `${headline(card, "headline")}
         <div class="split-region">
           <aside class="callout-block" data-box data-state="insight">
-            <strong class="callout-label">${escapeHtml(card.role)}</strong>
-            <p>${semanticKoreanHtml(recipeCard.mood)}</p>
+            <p>${semanticKoreanHtml(recipeCard.emphasis[0])}</p>
           </aside>
           <div class="split-support">${splitSupport(card, recipeCard, assets)}</div>
         </div>${body(card)}`;
@@ -56,21 +55,18 @@ const composition = (card, recipeCard, assets) => {
       return `${headline(card, "headline")}
         <blockquote class="quote-block" data-box>${semanticKoreanHtml(card.body)}</blockquote>
         <aside class="callout-block" data-box data-state="insight">
-          <strong class="callout-label">${semanticKoreanHtml(recipeCard.mood)}</strong>
-          <p>${emphasis(recipeCard)}</p>
+          <strong class="callout-label">${semanticKoreanHtml(publicKoreanRole(card.role))}</strong>
+          <p>${emphasis(recipeCard.emphasis)}</p>
         </aside>`;
     case "diagram":
       return `${headline(card, "headline")}
         <div class="diagram" data-box role="img" aria-label="${escapeHtml(recipeCard.accessibilityText)}">
-          <span>${escapeHtml(card.role)}</span><i aria-hidden="true"></i>
-          <span>${semanticKoreanHtml(recipeCard.mood)}</span><i aria-hidden="true"></i>
-          <span>${emphasis(recipeCard)}</span>
+          ${diagram(recipeCard)}
         </div>${body(card)}`;
     case "closing":
       return `${headline(card, "display")}<div class="accent-rule" aria-hidden="true"></div>
         <aside class="closing-statement" data-box>
-          <strong>${emphasis(recipeCard)}</strong>
-          <span>${semanticKoreanHtml(recipeCard.mood)}</span>
+          <strong>${emphasis(recipeCard.emphasis)}</strong>
         </aside>${body(card)}`;
     default:
       throw new RenderError("COMPOSITION_UNSUPPORTED", recipeCard.composition);
@@ -118,8 +114,7 @@ body{width:var(--page-width);height:var(--page-height);overflow:hidden;backgroun
   flex:0 0 var(--diagram-line-basis);background:var(--color-rule)}
 .closing-statement{display:flex;flex-direction:column;gap:var(--space-1);
   padding:var(--space-4);background:var(--color-surface);border-radius:var(--radius-large);box-shadow:var(--shadow-soft)}
-.closing-statement strong,.closing-statement span{font-size:var(--closing-size);line-height:var(--headline-leading)}
-.closing-statement span{color:var(--color-accent);font-weight:var(--font-weight-bold)}
+.closing-statement strong{font-size:var(--closing-size);line-height:var(--headline-leading)}
 ${injectedCss}</style></head>
 <body data-theme="${escapeHtml(input.theme.themeId)}">
 <article class="card-shell" aria-label="${escapeHtml(recipeCard.accessibilityText)}">
@@ -130,6 +125,6 @@ ${injectedCss}</style></head>
   <div class="card-content" data-composition="${escapeHtml(recipeCard.composition)}">
     ${composition(visibleCard, recipeCard, input.assets)}
   </div>
-  ${footer(visibleCard, recipeCard)}
+  ${footer()}
 </div></article></body></html>`;
 };

@@ -177,7 +177,7 @@ const renderCardsInBrowser = async ({ executablePath, cardIds }) => {
   return reports;
 };
 
-test("Given a generated mood prefixed by a list separator, When the footer is composed, Then metadata has one separator", async () => {
+test("Given internal workflow metadata, When a card is composed, Then only editorial copy is visible", async () => {
   const { loadRenderInput } = await import("../../src/render/input.mjs");
   const { buildCardHtml } = await import("../../src/render/card.mjs");
   const input = await loadRenderInput({ repositoryRoot: root, fixtureRoot });
@@ -188,12 +188,15 @@ test("Given a generated mood prefixed by a list separator, When the footer is co
   };
 
   const html = buildCardHtml({ card, recipeCard, input });
-  const footerText = html.match(/<footer class="provenance-footer"[^>]*>([\s\S]*?)<\/footer>/u)?.[1]
+  const visibleText = html.match(/<article[\s\S]*<\/article>/u)?.[0]
     .replace(/<[^>]+>/gu, "")
     .replace(/\s+/gu, " ")
     .trim();
 
-  assert.equal(footerText, "closing · 이어진 봉투들이 만드는 따뜻한 전시 card-7");
+  assert.equal(visibleText.includes("closing"), false);
+  assert.equal(visibleText.includes("card-7"), false);
+  assert.equal(visibleText.includes("이어진 봉투들이 만드는 따뜻한 전시"), false);
+  assert.equal(visibleText.includes(recipeCard.emphasis[0]), true);
 });
 
 test("Given all production cards, When pinned Chromium measures flow and text paint geometry, Then every region fits without collision", async () => {
@@ -241,7 +244,7 @@ test("Given injected flex collision, oversized diagram nodes, and displaced foot
     },
     {
       card: input.storyboard.cards[3],
-      css: ".diagram span{flex-basis:360px;width:360px}",
+      css: ".diagram span{flex-basis:900px;width:900px}",
       code: "DIAGRAM_GEOMETRY"
     },
     {

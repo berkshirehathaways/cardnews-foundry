@@ -77,7 +77,7 @@ export const designTokens = Object.freeze({
   "--card-section-gap": "24px",
   "--card-content-gap": "32px",
   "--footer-paint-clearance": "8px",
-  "--diagram-node-basis": "196px",
+  "--diagram-node-basis": "172px",
   "--diagram-line-basis": "64px",
   "--diagram-item-gap": "12px",
   "--closing-size": "48px",
@@ -169,10 +169,7 @@ button,input{font:inherit}
   word-break:keep-all;overflow-wrap:normal}
 .quote-block{margin:var(--space-4) var(--mechanic-zero) var(--mechanic-zero);padding:var(--space-4);
   border-left:var(--space-2) solid var(--color-accent);background:var(--color-surface);color:var(--color-text-primary)}
-.provenance-footer{padding:var(--space-3) var(--mechanic-zero) var(--footer-paint-clearance);
-  border-top:var(--stroke-hairline) solid var(--color-rule);
-  display:flex;justify-content:space-between;gap:var(--space-2);font-size:var(--caption-size);
-  line-height:var(--caption-leading);letter-spacing:var(--caption-tracking);color:var(--color-text-secondary)}
+.provenance-footer{min-height:var(--stroke-hairline);border-top:var(--stroke-hairline) solid var(--color-rule)}
 .contact-sheet-tile{margin:var(--mechanic-zero);padding:var(--space-2);background:var(--color-surface);
   border:var(--stroke-standard) solid var(--color-rule);border-radius:var(--radius-medium)}
 .contact-sheet-tile img{display:block;width:var(--mechanic-full);aspect-ratio:var(--contact-aspect);object-fit:cover;background:var(--color-canvas)}

@@ -58,6 +58,16 @@ test("Given renderer CSS outside the token source, When visual literals are scan
   assert.doesNotMatch(css, /(?:width|height|padding|margin|gap|font-size|line-height|opacity)\s*:\s*-?(?:\d*\.)?\d+(?:px|em|vw|vh|%|s|ms)?(?=[;}])/giu);
 });
 
+test("Given Korean modifiers and connectives, When semantic HTML is built, Then the following phrase is kept intact", async () => {
+  // Given
+  const { semanticKoreanHtml } = await import("../../src/render/korean.mjs");
+
+  // When / Then
+  for (const phrase of ["변화의 한가운데를", "들여 돌려주는", "묶은 도메인"]) {
+    assert.match(semanticKoreanHtml(phrase), new RegExp(`data-keep-phrase="${phrase}"`, "u"));
+  }
+});
+
 test("Given every showcase theme and required viewport, When primitive rectangles are measured, Then no content clips or overlaps", async () => {
   // Given
   const { buildShowcaseHtml } = await import("../../src/render/showcase.mjs");
