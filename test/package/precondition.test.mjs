@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { GATE_IDS } from "../../src/evaluate/index.mjs";
-import { isAcceptedDeterministicReport } from "../../src/package/job.mjs";
+import {
+  hasCurrentAcceptedPackage,
+  isAcceptedDeterministicReport
+} from "../../src/package/job.mjs";
 
 const visualIndex = GATE_IDS.indexOf("visual-pass-a");
 const deterministicGates = GATE_IDS.slice(0, visualIndex).map((id) => ({
@@ -35,4 +38,15 @@ test("Given an extra visual gate in the accepted evaluation record, When package
 
   // Then
   assert.equal(accepted, false);
+});
+
+test("Given an inherited package receipt made stale by an upstream revision, When package reuse is checked, Then a new immutable ZIP is allowed", () => {
+  const status = {
+    stages: [
+      { stage: "evaluate", state: "valid" },
+      { stage: "package", state: "stale" }
+    ]
+  };
+
+  assert.equal(hasCurrentAcceptedPackage(status), false);
 });

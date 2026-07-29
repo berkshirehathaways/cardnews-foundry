@@ -7,7 +7,7 @@ import {
   validateContract
 } from "../contracts/index.ts";
 import { loadEvaluationInput, GATE_IDS } from "../evaluate/index.mjs";
-import { commitStage } from "../jobs/index.ts";
+import { commitStage, getJobStatus } from "../jobs/index.ts";
 import { createPrivateProjection } from "../cli/projection.ts";
 import { acceptedValue } from "../cli/records.ts";
 import { buildGeneratedBundle } from "./bundle.mjs";
@@ -70,7 +70,11 @@ const persistedVerdict = async (job, name, source) => {
   return target;
 };
 
+export const hasCurrentAcceptedPackage = (status) =>
+  status.stages.some((stage) => stage.stage === "package" && stage.state === "valid");
+
 const acceptedPackageValue = async (job) => {
+  if (!hasCurrentAcceptedPackage(await getJobStatus(job))) return undefined;
   try {
     return await acceptedValue(job, "package");
   } catch {
