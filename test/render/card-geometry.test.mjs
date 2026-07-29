@@ -199,6 +199,28 @@ test("Given internal workflow metadata, When a card is composed, Then only edito
   assert.equal(visibleText.includes(recipeCard.emphasis[0]), true);
 });
 
+test("Given a background asset binding, When a card is composed, Then the image sits behind the safe-area instead of inside a media frame", async () => {
+  const { loadRenderInput } = await import("../../src/render/input.mjs");
+  const { buildCardHtml } = await import("../../src/render/card.mjs");
+  const input = await loadRenderInput({ repositoryRoot: root, fixtureRoot });
+  const card = input.storyboard.cards[0];
+  const recipeCard = {
+    ...input.recipe.cards[0],
+    assetBindings: input.recipe.cards[0].assetBindings.map((binding) => ({
+      ...binding,
+      slot: "background"
+    }))
+  };
+
+  const html = buildCardHtml({ card, recipeCard, input });
+  const backgroundIndex = html.indexOf('class="background-media"');
+  const safeAreaIndex = html.indexOf('class="safe-area"');
+
+  assert.notEqual(backgroundIndex, -1);
+  assert.equal(backgroundIndex < safeAreaIndex, true);
+  assert.equal(html.includes('class="media-frame" data-box data-variant="background"'), false);
+});
+
 test("Given all production cards, When pinned Chromium measures flow and text paint geometry, Then every region fits without collision", async () => {
   // Given
   const cardIds = Array.from({ length: 7 }, (_, index) => `card-${index + 1}`);

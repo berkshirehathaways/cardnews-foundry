@@ -2,13 +2,25 @@ import { escapeHtml, fontFaceCss, systemCss } from "./design.mjs";
 import { RenderError } from "./errors.mjs";
 import { publicKoreanRole, semanticKoreanHtml } from "./korean.mjs";
 
+const backgroundSlots = new Set(["background", "texture"]);
+
 const imageFor = (binding, assets) => {
   const asset = assets.get(binding.assetDigest);
   if (asset === undefined) throw new RenderError("ASSET_BINDING_MISSING", binding.assetDigest);
   return `data:${asset.metadata.detectedMime};base64,${asset.bytes.toString("base64")}`;
 };
 
-const media = (recipeCard, assets) => recipeCard.assetBindings.map((binding) => `
+const contentBindings = (recipeCard) =>
+  recipeCard.assetBindings.filter((binding) => !backgroundSlots.has(binding.slot));
+
+const backgroundMedia = (recipeCard, assets) => recipeCard.assetBindings
+  .filter((binding) => backgroundSlots.has(binding.slot))
+  .map((binding) => `
+<figure class="background-media" data-variant="${escapeHtml(binding.slot)}">
+  <img src="${imageFor(binding, assets)}" alt="${escapeHtml(binding.altText)}">
+</figure>`).join("");
+
+const media = (recipeCard, assets) => contentBindings(recipeCard).map((binding) => `
 <figure class="media-frame" data-box data-variant="${escapeHtml(binding.slot)}">
   <div class="media-viewport"><img src="${imageFor(binding, assets)}" alt="${escapeHtml(binding.altText)}"></div>
 </figure>`).join("");
@@ -25,7 +37,7 @@ const body = (card) =>
 
 const emphasis = (values) => values.map((value) => semanticKoreanHtml(value)).join(" · ");
 
-const splitSupport = (card, recipeCard, assets) => recipeCard.assetBindings.length > 0
+const splitSupport = (card, recipeCard, assets) => contentBindings(recipeCard).length > 0
   ? media(recipeCard, assets)
   : `<div class="evidence-block" data-box data-state="inset">
       <p>${emphasis(recipeCard.emphasis.slice(1)) || semanticKoreanHtml(publicKoreanRole(card.role))}</p>
@@ -42,7 +54,7 @@ const composition = (card, recipeCard, assets) => {
   switch (recipeCard.composition) {
     case "headline":
       return `${headline(card, "display")}${body(card)}
-        <div class="hero-region">${media(recipeCard, assets)}</div>`;
+        ${contentBindings(recipeCard).length > 0 ? `<div class="hero-region">${media(recipeCard, assets)}</div>` : ""}`;
     case "split":
       return `${headline(card, "headline")}
         <div class="split-region">
@@ -90,6 +102,11 @@ export const buildCardHtml = ({ card, recipeCard, input, injectedCss = "", seman
 body{width:var(--page-width);height:var(--page-height);overflow:hidden;background:var(--color-canvas)}
 .card-content{min-height:var(--mechanic-zero);display:flex;flex-direction:column;gap:var(--card-content-gap)}
 .card-content>*{flex:0 0 auto}
+.background-media{position:absolute;inset:var(--mechanic-zero);z-index:var(--mechanic-zero);
+  width:var(--mechanic-full);height:var(--mechanic-full);margin:var(--mechanic-zero)}
+.background-media img{display:block;width:var(--mechanic-full);height:var(--mechanic-full);
+  object-fit:cover;filter:var(--background-image-filter)}
+.safe-area{z-index:1}
 .card-content .headline-block{margin:var(--mechanic-zero);
   padding:var(--space-2) var(--mechanic-zero) var(--space-3)}
 .card-content .headline-block .eyebrow{margin-bottom:var(--space-3)}
@@ -118,6 +135,7 @@ body{width:var(--page-width);height:var(--page-height);overflow:hidden;backgroun
 ${injectedCss}</style></head>
 <body data-theme="${escapeHtml(input.theme.themeId)}">
 <article class="card-shell" aria-label="${escapeHtml(recipeCard.accessibilityText)}">
+${backgroundMedia(recipeCard, input.assets)}
 <div class="safe-area">
   <div class="sequence-marker" data-box data-state="${visibleCard.role === "closing" ? "terminal" : "accent"}">
     <span>${String(visibleCard.order + 1).padStart(2, "0")} / ${String(input.storyboard.cards.length).padStart(2, "0")}</span>

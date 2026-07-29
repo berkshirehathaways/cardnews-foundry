@@ -120,9 +120,12 @@ at 375px, 768px, 1280px, and 200% zoom. Exported cards do not responsively
 resize; they are fixed artifacts.
 
 Fixed composition tokens are `--hero-height: 410px`,
-`--split-left: 400px`, `--split-right: 1fr`,
-`--split-media-height: 340px`, `--card-section-gap: 24px`,
+`--split-left: 300px`, `--split-right: 1fr`,
+`--split-media-height: 420px`, `--card-section-gap: 24px`,
 `--card-content-gap: 32px`, and `--footer-paint-clearance: 8px`.
+Full-bleed `background` and `texture` media use
+`--background-image-filter: brightness(.32) saturate(.9)` so editorial text
+keeps theme contrast while the image remains a legible atmospheric layer.
 The safe area is a three-row grid: max-content sequence, a measured content
 region, and max-content provenance. Section gaps and the footer clearance are
 included in the 1110px safe-height budget. Composition children use their
@@ -152,8 +155,9 @@ per-card raw style values.
 
 `article.card-shell` is the 1080×1350 opaque page and owns theme application.
 States: `default`, `paper-inset`, `editorial-column`, `signal-grid`, and
-`night-split`. It contains one `.safe-area` in semantic reading order. The safe
-area allocates sequence, `.card-content`, and provenance as explicit grid rows.
+`night-split`. It may contain full-bleed `.background-media` before one
+`.safe-area` in semantic reading order. The safe area allocates sequence,
+`.card-content`, and provenance as explicit grid rows.
 The middle region composes measured, non-shrinking primitives with declared
 gaps; it must fit its remaining row without relying on clipping or hidden
 overflow.
