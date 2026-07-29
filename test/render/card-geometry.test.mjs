@@ -68,7 +68,7 @@ const inspectGeometry = (page) => page.evaluate(() => {
     let container = element.parentElement;
     while (
       container !== null &&
-      !container.matches(".safe-area,.card-content,.hero-region,.split-region,.split-support,.diagram")
+      !container.matches(".safe-area,.card-content,.hero-region,.split-stage,.diagram")
     ) {
       container = container.parentElement;
     }
@@ -83,7 +83,7 @@ const inspectGeometry = (page) => page.evaluate(() => {
     ".eyebrow",
     ".headline-block h1",
     ".hero-region",
-    ".split-region",
+    ".split-stage",
     ".card-content > .quote-block",
     ".safe-area > .quote-block",
     ".card-content > .callout-block",
@@ -219,6 +219,77 @@ test("Given a background asset binding, When a card is composed, Then the image 
   assert.notEqual(backgroundIndex, -1);
   assert.equal(backgroundIndex < safeAreaIndex, true);
   assert.equal(html.includes('class="media-frame" data-box data-variant="background"'), false);
+});
+
+test("Given a split card with editorial media, When composed, Then the callout is integrated into a full-width media stage", async () => {
+  const { loadRenderInput } = await import("../../src/render/input.mjs");
+  const { buildCardHtml } = await import("../../src/render/card.mjs");
+  const input = await loadRenderInput({ repositoryRoot: root, fixtureRoot });
+  const card = input.storyboard.cards[5];
+  const recipeCard = input.recipe.cards[5];
+
+  const html = buildCardHtml({ card, recipeCard, input });
+  const stage = html.match(/<div class="split-stage"[\s\S]*?<\/div>\s*<\/div>/u)?.[0] ?? "";
+
+  assert.equal(stage.includes('data-state="media"'), true);
+  assert.equal(stage.includes('class="media-frame"'), true);
+  assert.equal(stage.includes('class="callout-block"'), true);
+  assert.equal(stage.indexOf('class="media-frame"') < stage.indexOf('class="callout-block"'), true);
+  assert.equal(html.includes('class="split-region"'), false);
+});
+
+test("Given a closing card with background media, When composed, Then the statement sits directly over the image", async () => {
+  const { loadRenderInput } = await import("../../src/render/input.mjs");
+  const { buildCardHtml } = await import("../../src/render/card.mjs");
+  const input = await loadRenderInput({ repositoryRoot: root, fixtureRoot });
+  const card = input.storyboard.cards[6];
+  const backgroundBinding = {
+    ...input.recipe.cards[0].assetBindings[0],
+    slot: "background"
+  };
+  const recipeCard = {
+    ...input.recipe.cards[6],
+    assetBindings: [backgroundBinding]
+  };
+
+  const html = buildCardHtml({ card, recipeCard, input });
+
+  assert.equal(html.includes('class="closing-statement" data-box data-state="over-background"'), true);
+});
+
+test("Given a diagram card with one bound image, When composed, Then the image becomes atmosphere behind the argument", async () => {
+  const { loadRenderInput } = await import("../../src/render/input.mjs");
+  const { buildCardHtml } = await import("../../src/render/card.mjs");
+  const input = await loadRenderInput({ repositoryRoot: root, fixtureRoot });
+  const card = input.storyboard.cards[3];
+  const recipeCard = {
+    ...input.recipe.cards[3],
+    assetBindings: [{
+      ...input.recipe.cards[0].assetBindings[0],
+      slot: "scene"
+    }]
+  };
+
+  const html = buildCardHtml({ card, recipeCard, input });
+
+  assert.equal(html.includes('class="background-media" data-variant="scene"'), true);
+  assert.equal(html.includes('class="media-frame" data-box data-variant="scene"'), false);
+  assert.equal(html.includes('class="body-block" data-box data-state="on-background"'), true);
+});
+
+test("Given a mixed Korean and Latin headline, When composed, Then the mixed-script type rhythm is selected", async () => {
+  const { loadRenderInput } = await import("../../src/render/input.mjs");
+  const { buildCardHtml } = await import("../../src/render/card.mjs");
+  const input = await loadRenderInput({ repositoryRoot: root, fixtureRoot });
+  const card = {
+    ...input.storyboard.cards[3],
+    headline: "Non-verifiable은 해자가 아니었다"
+  };
+  const recipeCard = input.recipe.cards[3];
+
+  const html = buildCardHtml({ card, recipeCard, input });
+
+  assert.equal(html.includes('data-variant="headline" data-script="mixed"'), true);
 });
 
 test("Given all production cards, When pinned Chromium measures flow and text paint geometry, Then every region fits without collision", async () => {

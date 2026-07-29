@@ -66,6 +66,10 @@ code point is a blocking error.
 | Body | Regular, 34px, 1.48, 0 | Regular, 32px, 1.52, 0.01em |
 | Caption | Regular, 24px, 1.35, 0.02em | Regular, 22px, 1.40, 0.04em |
 
+Mixed Korean/Latin headlines use a dedicated 52px size in `signal-night` and
+56px in `ink-paper`, preserving Korean headline rhythm when a long Latin term
+would otherwise dominate the line.
+
 Korean copy wraps by authored semantic phrases. Particles, endings, predicates,
 connectives, short clauses, and citations must not become isolated lines.
 Headlines use `word-break: keep-all` and balanced authored line groups; body
@@ -120,12 +124,16 @@ at 375px, 768px, 1280px, and 200% zoom. Exported cards do not responsively
 resize; they are fixed artifacts.
 
 Fixed composition tokens are `--hero-height: 410px`,
-`--split-left: 300px`, `--split-right: 1fr`,
-`--split-media-height: 420px`, `--card-section-gap: 24px`,
+`--split-media-height: 480px`, `--split-overlay-width: 520px`,
+`--split-overlay-inset: 32px`, `--split-overlay-offset: 56px`,
+`--card-section-gap: 24px`,
 `--card-content-gap: 32px`, and `--footer-paint-clearance: 8px`.
-Full-bleed `background` and `texture` media use
+Full-bleed `background`, `texture`, and `scene` media use
 `--background-image-filter: brightness(.32) saturate(.9)` so editorial text
 keeps theme contrast while the image remains a legible atmospheric layer.
+Diagram compositions also promote their single bound image to this atmospheric
+layer regardless of slot name, keeping the diagram itself as the foreground
+argument instead of silently discarding relevant art.
 The safe area is a three-row grid: max-content sequence, a measured content
 region, and max-content provenance. Section gaps and the footer clearance are
 included in the 1110px safe-height budget. Composition children use their
@@ -133,11 +141,13 @@ measured max-content heights and cannot flex-shrink into adjacent text; the
 content region remains the bounded failure surface if future copy exceeds its
 budget.
 
-Diagram geometry uses `--diagram-node-basis: 196px`,
-`--diagram-line-basis: 64px`, and `--diagram-item-gap: 12px`. Three nodes, two
-connectors, four gaps, theme padding, borders, and available inner width are
-budgeted together. Nodes and connectors use explicit non-shrinking flex bases;
-no item may touch, overlap, or leave the diagram’s inner bounds.
+Diagram geometry uses `--diagram-node-height: 92px`,
+`--diagram-line-height: 24px`, and `--diagram-item-gap: 0px`. Three full-width
+editorial steps and two short vertical connectors form a light foreground rail,
+letting a relevant background image remain visible instead of enclosing the
+argument in one dominant panel. Nodes and connectors use explicit
+non-shrinking block sizes; no item may touch, overlap, or leave the diagram’s
+inner bounds.
 `--closing-size: 48px` remains the closing emphasis size. Contact-sheet
 mechanics use `--contact-aspect: 4 / 5`, `--sheet-width: 1080px`,
 `--sheet-height: 1480px`, `--sheet-columns: 3`,
@@ -181,6 +191,9 @@ intersect even when their CSS line boxes remain separate.
 `.body-block` contains supporting copy; `.evidence-block` adds a semantic label
 and source-linked statement. States: `plain`, `ruled`, `inset`, and `warning`.
 Instruction-like source text is inert escaped text.
+The `on-background` body state is a full-width, square-cornered editorial
+caption strip using the opaque canvas color and one accent rule. It is not a
+floating card and exists only to isolate paragraph text from detailed imagery.
 
 ### Media frame
 
@@ -193,6 +206,15 @@ following accent rule remain in normal document flow. Browser QA checks every
 primitive rectangle, direct-flow sibling pair, client/scroll extent, and media
 child boundary in both themes at every required viewport.
 
+### Editorial media stage
+
+`.split-stage` replaces the old thumbnail-and-sidebar split whenever a split
+composition has meaningful media. The image spans the safe width as the scene;
+one `.callout-block` overlaps its lower-left edge and remains inside the image
+frame. The overlap is structural, not decorative: the callout names the image's
+argument while the following body explains it. With no media, the composition
+falls back to a full-width evidence surface. States are `media` and `evidence`.
+
 ### Accent rule, stat, quote, and callout
 
 `.accent-rule` is a non-text structural divider.
@@ -201,6 +223,19 @@ child boundary in both themes at every required viewport.
 inventing quotation marks.
 `.callout-block` provides `note`, `insight`, and `warning` states with a visible
 text label, so state is not color-only.
+
+`.diagram` is a vertical editorial rail, not a row of circular badges. Its
+ordered steps occupy the available width, use accent sequence numerals, and are
+joined by short rules aligned exactly with the steps' left accent edge, forming
+one continuous causal rail instead of isolated center ticks. The
+rail has no enclosing surface, border, radius, or shadow; each step alone owns
+the minimum opaque reading surface.
+
+`.closing-statement` has `surface` and `over-background` states. The
+`over-background` state removes the raised panel and sets an oversized,
+left-aligned statement directly into the image's negative space; the text
+keeps the theme's third spacing token of vertical glyph-paint clearance, remains inside the
+safe area, and retains required contrast.
 
 ### Provenance footer
 

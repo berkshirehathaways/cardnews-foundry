@@ -67,7 +67,7 @@ export const inspectCardPage = async (expected) => {
   const second = await new Promise((resolve) => requestAnimationFrame(() => resolve(snapshot())));
   const safeElement = document.querySelector(".safe-area");
   const safe = safeElement === null ? null : rectangle(safeElement);
-  const containers = ".safe-area,.card-content,.hero-region,.split-region,.split-support,.diagram";
+  const containers = ".safe-area,.card-content,.hero-region,.split-stage,.diagram";
   const boxes = [...document.querySelectorAll("[data-box]")].map((element) => {
     let container = element.parentElement;
     while (container !== null && !container.matches(containers)) container = container.parentElement;
@@ -82,7 +82,7 @@ export const inspectCardPage = async (expected) => {
     };
   });
   const flowSelectors = [
-    ".sequence-marker", ".eyebrow", ".headline-block h1", ".hero-region", ".split-region",
+    ".sequence-marker", ".eyebrow", ".headline-block h1", ".hero-region", ".split-stage",
     ".card-content > .quote-block", ".safe-area > .quote-block", ".card-content > .callout-block",
     ".safe-area > .callout-block", ".diagram", ".accent-rule", ".closing-statement",
     ".card-content > .body-block", ".safe-area > .body-block", ".provenance-footer"

@@ -99,6 +99,7 @@ const SLOT_MEDIA_POLICIES: Readonly<Record<string, SlotMediaPolicy>> = {
   photo: { mime: ["image/png", "image/jpeg"] },
   logo: { mime: ["image/png", "image/jpeg"] },
   texture: { mime: ["image/png", "image/jpeg"] },
+  scene: { mime: ["image/png", "image/jpeg"] },
   overlay: { mime: ["image/png"], alpha: "present" }
 };
 
