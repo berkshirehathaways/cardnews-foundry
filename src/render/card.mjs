@@ -91,6 +91,12 @@ const composition = (card, recipeCard, assets) => {
           <strong>${emphasis(recipeCard.emphasis)}</strong>
         </aside>${body(card)}`;
     }
+    case "stat":
+      return `${headline(card, "headline")}
+        <div class="stat-block" data-box>
+          <strong class="stat-value">${semanticKoreanHtml(recipeCard.emphasis[0])}</strong>
+          <span class="stat-label">${semanticKoreanHtml(recipeCard.emphasis[1] ?? publicKoreanRole(card.role))}</span>
+        </div>${body(card)}`;
     default:
       throw new RenderError("COMPOSITION_UNSUPPORTED", recipeCard.composition);
   }

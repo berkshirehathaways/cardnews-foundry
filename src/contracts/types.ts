@@ -67,7 +67,7 @@ export type VisualRecipe = {
   readonly themeId: string;
   readonly cards: readonly {
     readonly cardId: string;
-    readonly composition: "headline" | "split" | "quote" | "diagram" | "closing";
+    readonly composition: "headline" | "split" | "quote" | "diagram" | "closing" | "stat";
     readonly mood: string;
     readonly emphasis: readonly string[];
     readonly assetBindings: readonly {

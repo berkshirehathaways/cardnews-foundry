@@ -277,6 +277,27 @@ test("Given a diagram card with one bound image, When composed, Then the image b
   assert.equal(html.includes('class="body-block" data-box data-state="on-background"'), true);
 });
 
+test("Given a stat card, When composed, Then the value and label render as a token-bound stat block from recipe data", async () => {
+  const { loadRenderInput } = await import("../../src/render/input.mjs");
+  const { buildCardHtml } = await import("../../src/render/card.mjs");
+  const input = await loadRenderInput({ repositoryRoot: root, fixtureRoot });
+  const card = input.storyboard.cards[5];
+  const recipeCard = {
+    ...input.recipe.cards[5],
+    composition: "stat",
+    emphasis: ["열여덟 집", "스물네 집 중 이어진 참여"]
+  };
+
+  const html = buildCardHtml({ card, recipeCard, input });
+
+  assert.equal(html.includes('class="stat-block" data-box'), true);
+  // value block (emphasis[0]) precedes label block (emphasis[1]); both carry recipe copy
+  assert.equal(html.indexOf('class="stat-value"') < html.indexOf('class="stat-label"'), true);
+  assert.equal(html.indexOf('class="stat-label"') !== -1, true);
+  assert.equal(html.includes("열여덟 집"), true);
+  assert.equal(html.includes("이어진 참여"), true);
+});
+
 test("Given a mixed Korean and Latin headline, When composed, Then the mixed-script type rhythm is selected", async () => {
   const { loadRenderInput } = await import("../../src/render/input.mjs");
   const { buildCardHtml } = await import("../../src/render/card.mjs");

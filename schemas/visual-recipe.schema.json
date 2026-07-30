@@ -20,7 +20,7 @@
         "required": ["cardId", "composition", "mood", "emphasis", "assetBindings", "accessibilityText"],
         "properties": {
           "cardId": { "$ref": "#/$defs/id" },
-          "composition": { "enum": ["headline", "split", "quote", "diagram", "closing"] },
+          "composition": { "enum": ["headline", "split", "quote", "diagram", "closing", "stat"] },
           "mood": { "type": "string", "minLength": 1 },
           "emphasis": { "type": "array", "items": { "type": "string", "minLength": 1 } },
           "assetBindings": {
