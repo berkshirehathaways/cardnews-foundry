@@ -23,7 +23,8 @@ test("Given two independent clean jobs with one canonical profile, When every no
   // Then
   assert.equal(result.equal, true);
   assert.deepEqual(result.first.hashes, result.second.hashes);
-  assert.equal(result.first.hashes.length > 16, true);
+  // lean accepted output: 7 card PNGs + 7 render records + contact sheet + manifest
+  assert.equal(result.first.hashes.length, 16);
   assert.equal(result.nativeEnvironment.platform, process.platform);
   assert.equal(result.crossOsByteIdentity, "deferred-to-t14-ci");
 });
