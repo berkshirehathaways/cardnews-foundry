@@ -42,7 +42,7 @@ export const designTokens = Object.freeze({
   "--contact-aspect": "4 / 5",
   "--opacity-muted": ".72",
   "--opacity-hidden": "0",
-  "--background-image-filter": "brightness(.32) saturate(.9)",
+  "--background-image-filter": "brightness(.85) saturate(1)",
   "--showcase-filter-muted": "grayscale(1) opacity(.35)",
   "--showcase-stage-color": "#ECEFF3",
   "--showcase-ink-color": "#17212B",
@@ -115,6 +115,7 @@ button,input{font:inherit}
   --radius-small:12px;--radius-medium:24px;--radius-large:40px;
   --stroke-hairline:1px;--stroke-standard:3px;
   --shadow-soft:0 12px 24px var(--shadow-soft-color);
+  --background-scrim:linear-gradient(180deg, color-mix(in srgb, var(--color-canvas) 90%, transparent) 0%, color-mix(in srgb, var(--color-canvas) 62%, transparent) 52%, color-mix(in srgb, var(--color-canvas) 92%, transparent) 100%);
   --shadow-strong:0 24px 48px var(--shadow-strong-color);
 }
 [data-theme="signal-night"]{
@@ -129,6 +130,7 @@ button,input{font:inherit}
   --space-1:6px;--space-2:12px;--space-3:20px;--space-4:32px;--space-5:52px;--space-6:84px;
   --radius-small:4px;--radius-medium:12px;--radius-large:20px;
   --stroke-hairline:1px;--stroke-standard:2px;
+  --background-scrim:linear-gradient(180deg, color-mix(in srgb, var(--color-canvas) 90%, transparent) 0%, color-mix(in srgb, var(--color-canvas) 62%, transparent) 52%, color-mix(in srgb, var(--color-canvas) 92%, transparent) 100%);
   --shadow-soft:0 8px 20px var(--shadow-soft-color);
   --shadow-strong:0 20px 40px var(--shadow-strong-color);
 }

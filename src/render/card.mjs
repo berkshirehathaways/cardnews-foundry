@@ -123,6 +123,7 @@ body{width:var(--page-width);height:var(--page-height);overflow:hidden;backgroun
   width:var(--mechanic-full);height:var(--mechanic-full);margin:var(--mechanic-zero)}
 .background-media img{display:block;width:var(--mechanic-full);height:var(--mechanic-full);
   object-fit:cover;filter:var(--background-image-filter)}
+.background-media::after{content:"";position:absolute;inset:var(--mechanic-zero);background:var(--background-scrim)}
 .safe-area{z-index:1}
 .card-content .headline-block{margin:var(--mechanic-zero);
   padding:var(--space-2) var(--mechanic-zero) var(--space-3)}
