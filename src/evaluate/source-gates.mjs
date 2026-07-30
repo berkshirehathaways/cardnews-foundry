@@ -108,6 +108,14 @@ export const sourceAndStoryGates = (input) => {
     ["storyboard-domain-purity", () => !containsForbiddenDomainKey(storyboard)],
     ["record-dependency-chain", () =>
       editorial.sourceEnvelopeDigest === canonicalSha256(source) &&
-      storyboard.editorialBriefDigest === canonicalSha256(editorial)]
+      storyboard.editorialBriefDigest === canonicalSha256(editorial)],
+    ["editorial-headline-length", () =>
+      storyboardCards.every((card) =>
+        card.headline.trim().length >= 1 && card.headline.length <= 40)],
+    ["editorial-thesis-focus", () =>
+      storyboardCards.every((card) =>
+        card.body.length <= 120 && (card.body.match(/[.!?。！？]/gu) ?? []).length <= 3)],
+    ["editorial-headline-variety", () =>
+      unique(storyboardCards.map((card) => card.headline.trim().split(/\s+/u)[0]))]
   ];
 };

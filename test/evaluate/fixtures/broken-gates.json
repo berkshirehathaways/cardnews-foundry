@@ -39,5 +39,8 @@
   {"gateId":"package-relative-paths","operation":"set","path":"package.manifest.files.0.relativePath","value":"../escape.png"},
   {"gateId":"package-digests","operation":"set","path":"package.manifest.files.0.sha256","value":"0000000000000000000000000000000000000000000000000000000000000000"},
   {"gateId":"package-prohibited-content","operation":"set-package-text","relativePath":"cards/card-1.png","value":"/Users/private/.env"},
-  {"gateId":"package-preconditions","operation":"append","path":"verdicts.passA.blockers","value":"blocking visual defect","score":100}
+  {"gateId":"package-preconditions","operation":"append","path":"verdicts.passA.blockers","value":"blocking visual defect","score":100},
+  {"gateId":"editorial-headline-length","operation":"set","path":"records.storyboard.cards.0.headline","value":"지나치게 길어서 한 장의 카드 헤드라인으로는 도저히 담을 수 없는 장황하고 늘어지는 제목 문장입니다"},
+  {"gateId":"editorial-thesis-focus","operation":"set","path":"records.storyboard.cards.0.body","value":"첫째 문장이다. 둘째 문장이다. 셋째 문장이다. 넷째 문장이다."},
+  {"gateId":"editorial-headline-variety","operation":"set","path":"records.storyboard.cards.0.headline","value":"한 번 더 보기"}
 ]
