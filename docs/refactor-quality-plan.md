@@ -2,6 +2,13 @@
 
 실행자: 코딩 에이전트 (계획 수립 시점 기준 HEAD = `62b3453`, 트리 클린, `tsc --noEmit` 0)
 
+
+## 실행 결과 (2026-07-30 업데이트)
+
+- **DONE** R1 `c96b0ad` · R2 `4daa2fd` · R3 `7684b19` · R4(워크스페이스 위생, 레포 밖) · Q1 `a4a8ea1` · Q2 `2f40a9f` · Q3 `5adec4c`
+- 검증: fix-loop 6/6, renderer 11/11, gate-matrix 52/52, contracts 19/19, precondition 3/3, 빠른 스위트 106/106, `tsc --noEmit` 0. 트리 클린.
+- **HOLD** Q4 — 아래 재평가 참조. 블라인드 커밋 안 함(시각 재디자인 + 헤드라인 대비 트레이드오프, 실제 렌더 리뷰 필요).
+- **HOLD** Q5 — 별도 승인 대기.
 ## 0. 컨텍스트 (이미 끝난 것 — 다시 하지 말 것)
 
 - 렌더 중간 HTML 미보존(`retainHtml` 기본 off), `cardnews prune` + package 후 auto-prune — 커밋 `62b3453`에 포함.
@@ -57,11 +64,13 @@
 - **주의**: 스키마 변경은 `schemas/visual-recipe.schema.json` + 계약 벡터 갱신 필요. card.mjs에 한글 리터럴 금지(가드 1) — 라벨 텍스트는 전부 recipe 데이터에서.
 - 검증: `test:contracts` + `test:render` 풀런.
 
-### Q4. 배경 이미지 스킴 개선 (중간 리스크, 이미지 카드 체감 큼)
-- 현상: 배경 미디어에 전역 `brightness(.32)` — 이미지가 죽는다.
-- 작업: over-background 상태에 하단 가중 그라디언트 스킴 토큰(`--background-scrim`)을 도입해 텍스트 영역만 어둡게, 이미지 상부는 살림. 밝기 필터는 완화.
-- **컨트라스트 증명**: geometry-inspect가 이미 텍스트 rect를 계산하므로, QA에서 최종 PNG의 텍스트 rect 영역 픽셀을 샘플해 AA(4.5:1) 미달 시 fail하는 게이트를 함께 추가(스킴 완화의 안전망).
-- 검증: 컨트라스트 게이트 그린 + 새 리비전 육안 비교.
+### Q4. 배경 이미지 스킴 개선 (HOLD — 시각 재디자인, 실제 렌더 리뷰 필요)
+- 현상: 배경 미디어에 전역 `brightness(.32) saturate(.9)` (design.mjs `--background-image-filter`) — 이미지가 죽는다.
+- **실행 중 발견(중요)**: 배경 카드 CSS(`.background-media`, `.closing-statement[data-state="over-background"]`, `filter:var(--background-image-filter)`)는 **card.mjs 내부 `<style>` 블록**에 있어 fix-loop 토큰 스캔 대상 — 그라디언트 stop 같은 raw 값은 design.mjs 토큰(`--background-scrim` 등)으로 정의하고 card.mjs는 `var()`만 참조해야 함(design.mjs는 스캔 예외).
+- **핵심 트레이드오프**: `over-background` closing 카드는 **헤드라인(display)까지 이미지 위에 직접** 올라간다(`body[data-state="on-background"]`만 불투명 canvas 스트립으로 대비 보장). 밝기를 풀면 상단 헤드라인 대비가 깨질 수 있어 **하단 가중 스크림 하나로는 불충분** — 헤드라인 위치까지 커버하는 스크림/불투명 스트립 설계가 필요.
+- 그래서 이건 기계적 변경이 아니라 **주관적 시각 결정** = 실제 카드 렌더를 사람이 보며 반복해야 함. 테스트는 안전성(geometry gate)만 검증하지 미학/대비 균형은 못 함.
+- 안전망 옵션(스킴 완화 시): 최종 PNG의 텍스트 rect 픽셀을 샘플해 AA(4.5:1) 미달 시 fail하는 컨트라스트 게이트. 단 deviceScaleFactor↔픽셀 매핑·결정성 확보가 별도 과제.
+- 검증: 컨트라스트 게이트 그린 + **새 리비전 렌더 육안 before/after 비교(승인 게이트)**.
 
 ### Q5. (선택 — 별도 승인 후) 2× 해상도 타겟
 - `deviceScaleFactor: 2` 또는 2160×2700 타겟 프로파일 — IG 재압축 내성↑. 단 `RenderArtifact`의 width/height 검증·계약 다수 접촉 → 승인 없이 착수 금지.
