@@ -91,3 +91,6 @@ export const publicKoreanRole = (role) => {
   if (label === undefined) throw new RenderError("ROLE_UNSUPPORTED", role);
   return label;
 };
+
+export const headlineScript = (value) =>
+  /[A-Za-z]/u.test(value) && /\p{Script=Hangul}/u.test(value) ? "mixed" : "korean";

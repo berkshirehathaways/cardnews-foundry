@@ -1,6 +1,6 @@
 import { escapeHtml, fontFaceCss, systemCss } from "./design.mjs";
 import { RenderError } from "./errors.mjs";
-import { publicKoreanRole, semanticKoreanHtml } from "./korean.mjs";
+import { headlineScript, publicKoreanRole, semanticKoreanHtml } from "./korean.mjs";
 
 const backgroundSlots = new Set(["background", "texture", "scene"]);
 const isBackgroundBinding = (recipeCard, binding) =>
@@ -30,8 +30,6 @@ const media = (recipeCard, assets) => contentBindings(recipeCard).map((binding) 
 </figure>`).join("");
 
 const footer = () => '<footer class="provenance-footer" data-box aria-hidden="true"></footer>';
-
-const headlineScript = (value) => /[A-Za-z]/u.test(value) && /[가-힣]/u.test(value) ? "mixed" : "korean";
 
 const headline = (card, variant) => `<header class="headline-block" data-box data-variant="${variant}" data-script="${headlineScript(card.headline)}">
   <span class="eyebrow">${semanticKoreanHtml(publicKoreanRole(card.role))}</span>
