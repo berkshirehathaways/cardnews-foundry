@@ -5,9 +5,9 @@
 
 ## 실행 결과 (2026-07-30 업데이트)
 
-- **DONE** R1 `c96b0ad` · R2 `4daa2fd` · R3 `7684b19` · R4(워크스페이스 위생, 레포 밖) · Q1 `a4a8ea1` · Q2 `2f40a9f` · Q3 `5adec4c`
-- 검증: fix-loop 6/6, renderer 11/11, gate-matrix 52/52, contracts 19/19, precondition 3/3, 빠른 스위트 106/106, `tsc --noEmit` 0. 트리 클린.
-- **HOLD** Q4 — 아래 재평가 참조. 블라인드 커밋 안 함(시각 재디자인 + 헤드라인 대비 트레이드오프, 실제 렌더 리뷰 필요).
+- **DONE** R1 `c96b0ad` · R2 `4daa2fd` · R3 `7684b19` · R4(워크스페이스 위생, 레포 밖) · Q1 `a4a8ea1` · Q2 `2f40a9f` · Q3 `5adec4c` · Q4 `d125f35`
+- 검증: fix-loop 6/6, card-geometry 10/10, renderer 11/11, gate-matrix 52/52, contracts 19/19, precondition 3/3, 빠른 스위트 106/106, `tsc --noEmit` 0. 트리 클린.
+- **Q4 결론(렌더-리뷰 루프 수행됨)**: 렌더해 보니 주관 건이 아니라 **객관적 대비 버그**였다 — ink-paper의 어두운 잉크 텍스트가 brightness(.32)로 죽인 이미지 위에 올라가 over-background 헤드라인/본문이 사실상 판독 불가(AA 실패). frozen fixture에 배경 카드가 없어 이 경로가 육안 검증된 적이 없었음. 수정: 테마-canvas 스크림(`--background-scrim`, 90/62/92% 세로 베일) + brightness(.85). **함정 기록**: 커스텀 프로퍼티는 요소별 computed 시점에 내부 `var()`를 즉시 해석하므로 `:root`에 선언하면 테마 블록의 `--color-canvas`가 안 보여 guaranteed-invalid로 죽는다 → 반드시 두 `[data-theme]` 블록 안에 선언.
 - **HOLD** Q5 — 별도 승인 대기.
 ## 0. 컨텍스트 (이미 끝난 것 — 다시 하지 말 것)
 
