@@ -7,6 +7,7 @@ import {
 import {
   createJob,
   createJobRevision,
+  pruneSupersededRevisions,
   type JobHandle
 } from "../jobs/index.ts";
 import { JobError } from "../jobs/index.ts";
@@ -203,6 +204,24 @@ export const statusCommand = async (args: ParsedArgs): Promise<unknown> =>
   cliStatus(await openJob(requiredString(args, "job")));
 
 export const resumeCommand = statusCommand;
+
+export const pruneCommand = async (args: ParsedArgs): Promise<unknown> => {
+  const slug = optionalString(args, "slug");
+  const result = await pruneSupersededRevisions({
+    ...(slug === undefined ? {} : { slug }),
+    dryRun: booleanOption(args, "dry-run")
+  });
+  return {
+    dryRun: result.dryRun,
+    prunedCount: result.pruned.length,
+    keptCount: result.keptRevisions.length,
+    prunedRevisions: result.pruned.map((entry) => ({
+      jobId: entry.jobId,
+      revision: entry.revision,
+      removed: entry.removed
+    }))
+  };
+};
 
 export const validateCommand = async (args: ParsedArgs): Promise<unknown> => {
   const job = await openJob(requiredString(args, "job"));

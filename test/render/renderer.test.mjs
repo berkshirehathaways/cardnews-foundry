@@ -37,7 +37,12 @@ test("Given the validated T7 synthetic chain, When it is rendered offline, Then 
   assert.deepEqual(result.cardIds, renderSpec.cardOrder);
   assert.equal(result.artifacts.length, storyboard.cards.length);
   assert.equal((await readdir(path.join(outputRoot, "cards"))).length, storyboard.cards.length);
-  assert.equal((await readdir(path.join(outputRoot, "html"))).length, storyboard.cards.length);
+  for (const artifact of result.artifacts) {
+    assert.match(artifact.htmlSource.sha256, /^[0-9a-f]{64}$/u);
+    assert.equal(artifact.htmlSource.byteCount > 0, true);
+    assert.equal("relativePath" in artifact.htmlSource, false);
+  }
+  await assert.rejects(readdir(path.join(outputRoot, "html")), (error) => error.code === "ENOENT");
   assert.equal((await readdir(path.join(outputRoot, "records"))).length, storyboard.cards.length);
   assert.equal((await stat(path.join(outputRoot, "contact-sheet.png"))).size > 0, true);
   assert.equal(result.networkRequests.length, 0);
@@ -86,6 +91,7 @@ test("Given instruction-like HTML and script syntax in validated semantic text, 
 
   // When
   const { outputRoot, result } = await renderToTemporaryJob(context, {
+    retainHtml: true,
     semanticTextTransform: ({ body }) => ({ body: `${body} ${phrase}` })
   });
   const html = await readFile(path.join(outputRoot, "html", "card-1.html"), "utf8");
@@ -248,7 +254,7 @@ test("Given a generated render set, When inventory order is validated, Then miss
     mutate(changed.artifacts[0]);
     await assert.rejects(
       () => verifyRenderInventory({ outputRoot, manifest: changed }),
-      (error) => error.code === "CARD_MEDIA_MISMATCH"
+      (error) => ["CARD_MEDIA_MISMATCH", "RENDER_MANIFEST_INVALID"].includes(error.code)
     );
   }
   await writeFile(path.join(outputRoot, "contact-sheet.png"), Buffer.from("missing cards"));

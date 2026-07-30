@@ -2,7 +2,7 @@ import { CliError } from "./errors.ts";
 
 export const COMMANDS = [
   "init", "ingest", "scaffold-record", "commit-record", "validate",
-  "import-asset", "render", "evaluate", "status", "resume", "package"
+  "import-asset", "render", "evaluate", "status", "resume", "package", "prune"
 ] as const;
 
 export type CommandName = (typeof COMMANDS)[number];
@@ -19,10 +19,11 @@ const options = {
   evaluate: ["job", "deterministic-only"],
   status: ["job"],
   resume: ["job"],
-  package: ["job", "format", "visual-pass-a", "visual-pass-b"]
+  package: ["job", "format", "visual-pass-a", "visual-pass-b"],
+  prune: ["slug", "dry-run"]
 } as const satisfies Readonly<Record<CommandName, readonly string[]>>;
 
-const booleans = new Set(["json", "force", "help", "deterministic-only"]);
+const booleans = new Set(["json", "force", "help", "deterministic-only", "dry-run"]);
 
 export type ParsedArgs = {
   readonly command?: CommandName;
@@ -105,6 +106,7 @@ Commands:
   status
   resume
   package
+  prune
 
 Common options:
   --json

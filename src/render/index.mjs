@@ -39,8 +39,9 @@ export const renderFixture = async (options) => {
   await mkdir(parent, { recursive: true });
   const temporary = path.join(parent, `.${path.basename(options.outputRoot)}.${randomUUID()}.tmp`);
   options.onTemporaryOutput?.(temporary);
+  const retainHtml = options.retainHtml === true;
   await mkdir(path.join(temporary, "cards"), { recursive: true });
-  await mkdir(path.join(temporary, "html"), { recursive: true });
+  if (retainHtml) await mkdir(path.join(temporary, "html"), { recursive: true });
   await mkdir(path.join(temporary, "records"), { recursive: true });
   const renderer = await createRendererBrowser(input);
   const cards = [];
@@ -58,7 +59,7 @@ export const renderFixture = async (options) => {
         injectedCss: options.injectedCss,
         semanticTextTransform: options.semanticTextTransform
       });
-      await writeFile(path.join(temporary, "html", `${cardId}.html`), html, { flag: "wx" });
+      if (retainHtml) await writeFile(path.join(temporary, "html", `${cardId}.html`), html, { flag: "wx" });
       interrupt(options.failpoint, "after-html");
       const rendered = await renderer.renderHtml(html);
       const inspection = inspectPng(rendered.png);
@@ -107,7 +108,7 @@ export const renderFixture = async (options) => {
         sourceRevision: input.sourceRevision,
         rendererVersion: RENDERER_VERSION,
         htmlSource: {
-          relativePath: `html/${cardId}.html`,
+          ...(retainHtml ? { relativePath: `html/${cardId}.html` } : {}),
           sha256: sha256(Buffer.from(html)),
           byteCount: Buffer.byteLength(html)
         },
@@ -143,7 +144,7 @@ export const renderFixture = async (options) => {
     const contactHtml = buildContactSheetHtml({ input, cards });
     const contactRendered = await renderer.renderStaticDocument(contactHtml, contactDimensions);
     const contactInspection = inspectPng(contactRendered.png);
-    await writeFile(path.join(temporary, "contact-sheet.html"), contactHtml, { flag: "wx" });
+    if (retainHtml) await writeFile(path.join(temporary, "contact-sheet.html"), contactHtml, { flag: "wx" });
     await writeFile(path.join(temporary, "contact-sheet.png"), contactRendered.png, { flag: "wx" });
     const manifest = {
       schemaVersion: 1,
@@ -153,7 +154,7 @@ export const renderFixture = async (options) => {
       artifacts: cards.map(({ artifact }) => artifact),
       contactSheet: {
         relativePath: "contact-sheet.png",
-        htmlRelativePath: "contact-sheet.html",
+        ...(retainHtml ? { htmlRelativePath: "contact-sheet.html" } : {}),
         mediaType: "image/png",
         mediaSignature: contactInspection.signature,
         width: contactInspection.width,

@@ -19,6 +19,11 @@ await mkdir(capturesRoot, { recursive: true });
 const manifest = JSON.parse(await readFile(path.join(outputRoot, "render-manifest.json"), "utf8"));
 const target = JSON.parse(await readFile(path.join(root, "targets", "portrait-social-1080x1350.json"), "utf8"));
 await verifyRenderInventory({ outputRoot, manifest });
+const htmlRetained = manifest.artifacts.every((artifact) => typeof artifact.htmlSource?.relativePath === "string")
+  && typeof manifest.contactSheet.htmlRelativePath === "string";
+if (!htmlRetained) {
+  throw new Error("manual QA re-render requires retained render HTML; production render output omits the large inline HTML to stay lean — re-render the job with retainHtml enabled before running manual QA");
+}
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const browser = await chromium.launch({
   headless: true,

@@ -12,6 +12,7 @@ Commands:
   status
   resume
   package
+  prune
 
 Common options:
   --json

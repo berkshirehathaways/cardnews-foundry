@@ -3,7 +3,7 @@ import path from "node:path";
 import { importAsset } from "../assets/index.ts";
 import { canonicalJson, validateContract, type EvaluationReport } from "../contracts/index.ts";
 import { evaluateGateMatrix, GATE_IDS, loadEvaluationInput } from "../evaluate/index.mjs";
-import { commitStage, getJobStatus } from "../jobs/index.ts";
+import { commitStage, getJobStatus, pruneSupersededRevisions } from "../jobs/index.ts";
 import {
   createAnchoredExclusive,
   readAnchoredText,
@@ -274,8 +274,12 @@ export const packageCommand = async (args: ParsedArgs): Promise<unknown> => {
     passAPath,
     passBPath
   });
+  // A freshly packaged revision is the lineage tip; reclaim the regenerable
+  // working artifacts of any revisions it superseded so the workspace stays lean.
+  const pruned = await pruneSupersededRevisions({ root: job.root, slug: job.slug });
   return {
     ...result,
-    outputPath: displayPath(result.outputPath)
+    outputPath: displayPath(result.outputPath),
+    prunedSupersededRevisions: pruned.pruned.map((entry) => entry.jobId)
   };
 };

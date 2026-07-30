@@ -9,4 +9,5 @@ export function renderFixture(options: {
   readonly outputRoot: string;
   readonly validatedFixture?: boolean;
   readonly onTemporaryOutput?: (temporary: string) => void;
+  readonly retainHtml?: boolean;
 }): Promise<RenderResult>;

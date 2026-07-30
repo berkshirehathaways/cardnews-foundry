@@ -8,6 +8,7 @@ import { classifyError } from "./errors.ts";
 import {
   ingestCommand,
   initCommand,
+  pruneCommand,
   resumeCommand,
   statusCommand,
   validateCommand
@@ -39,6 +40,7 @@ const dispatch = (command: CommandName, args: ParsedArgs): Promise<unknown> => {
     case "status": return statusCommand(args);
     case "resume": return resumeCommand(args);
     case "package": return packageCommand(args);
+    case "prune": return pruneCommand(args);
     default: return Promise.reject(assertNever(command));
   }
 };
