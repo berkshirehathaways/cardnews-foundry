@@ -298,6 +298,32 @@ test("Given a stat card, When composed, Then the value and label render as a tok
   assert.equal(html.includes("이어진 참여"), true);
 });
 
+test("Given a 2x device scale factor, When a card is rendered, Then geometry holds in CSS px while the PNG rasters at doubled pixel dimensions", async () => {
+  const { loadRenderInput } = await import("../../src/render/input.mjs");
+  const { buildCardHtml } = await import("../../src/render/card.mjs");
+  const { createRendererBrowser } = await import("../../src/render/browser.mjs");
+  const { inspectPng } = await import("../../src/render/png.mjs");
+  const input = await loadRenderInput({ repositoryRoot: root, fixtureRoot });
+  input.spec.environment.deviceScaleFactor = 2;
+
+  const renderer = await createRendererBrowser(input);
+  try {
+    const card = input.storyboard.cards[0];
+    // renderHtml runs assertCardGeometry (CSS px) internally and throws on overflow;
+    // returning proves geometry held while the raster doubled.
+    const rendered = await renderer.renderHtml(
+      buildCardHtml({ card, recipeCard: input.recipe.cards[0], input })
+    );
+    const png = inspectPng(rendered.png);
+    assert.equal(png.width, input.target.dimensions.width * 2);
+    assert.equal(png.height, input.target.dimensions.height * 2);
+    assert.equal(png.opaque, true);
+    assert.equal(rendered.report.compromised, false);
+  } finally {
+    await renderer.close();
+  }
+});
+
 test("Given a mixed Korean and Latin headline, When composed, Then the mixed-script type rhythm is selected", async () => {
   const { loadRenderInput } = await import("../../src/render/input.mjs");
   const { buildCardHtml } = await import("../../src/render/card.mjs");

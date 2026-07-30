@@ -63,9 +63,12 @@ export const renderFixture = async (options) => {
       interrupt(options.failpoint, "after-html");
       const rendered = await renderer.renderHtml(html);
       const inspection = inspectPng(rendered.png);
+      // target.dimensions is CSS layout px; the PNG rasters at deviceScaleFactor,
+      // so the accepted pixel dimensions are CSS dimensions × scale factor.
+      const scaleFactor = input.spec.environment.deviceScaleFactor;
       if (
-        inspection.width !== input.target.dimensions.width ||
-        inspection.height !== input.target.dimensions.height
+        inspection.width !== input.target.dimensions.width * scaleFactor ||
+        inspection.height !== input.target.dimensions.height * scaleFactor
       ) throw new RenderError("DIMENSIONS_MISMATCH", cardId, inspection);
       if (!inspection.opaque) throw new RenderError("PNG_ALPHA_INVALID", cardId);
       const relativePath = `cards/${cardId}.png`;

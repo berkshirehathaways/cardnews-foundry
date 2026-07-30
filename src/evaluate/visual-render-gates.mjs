@@ -72,8 +72,8 @@ export const visualAndRenderGates = (input) => {
       input.render.runtime.compromised === false],
     ["render-fonts", () => artifacts.every((artifact) => loadedFonts(artifact.geometry))],
     ["render-dimensions", () => artifacts.every((artifact) =>
-      artifact.contract.width === renderSpec.dimensions.width &&
-      artifact.contract.height === renderSpec.dimensions.height
+      artifact.contract.width === renderSpec.dimensions.width * renderSpec.environment.deviceScaleFactor &&
+      artifact.contract.height === renderSpec.dimensions.height * renderSpec.environment.deviceScaleFactor
     )],
     ["render-media", () => artifacts.every((artifact) => {
       const capture = input.render.captures[artifact.contract.cardId];

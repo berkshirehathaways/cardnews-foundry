@@ -13,6 +13,7 @@ import {
   regenerateEvaluationCaptures
 } from "../../src/evaluate/index.mjs";
 import { applyBrokenFixture, packageFilesFromRender, readJson } from "./helpers.mjs";
+import { visualAndRenderGates } from "../../src/evaluate/visual-render-gates.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const fixtureRoot = path.join(root, "fixtures", "synthetic");
@@ -88,6 +89,28 @@ test("Given the complete valid evaluation input, When all deterministic and norm
     result.report.gates.filter((gate) => gate.status === "fail").map((gate) => gate.id).join(",")
   );
   assert.equal(result.report.blocking, false);
+});
+
+test("Given a 2x render, When the render-dimensions gate runs, Then it accepts pixel dimensions scaled by deviceScaleFactor and rejects unscaled ones", () => {
+  // Given
+  const renderDimensions = (input) =>
+    new Map(visualAndRenderGates(input)).get("render-dimensions")();
+
+  // Then — the 1x baseline (1080x1350 spec, 1080x1350 PNGs) accepts
+  assert.equal(renderDimensions(baseline), true);
+
+  // When a 2x render doubles the PNG pixel dimensions and the spec declares dsf 2
+  const scaled = structuredClone(baseline);
+  scaled.records.renderSpec.environment.deviceScaleFactor = 2;
+  for (const artifact of scaled.render.manifest.artifacts) {
+    artifact.contract.width *= 2;
+    artifact.contract.height *= 2;
+  }
+  assert.equal(renderDimensions(scaled), true);
+
+  // Then doubled pixels without the matching dsf are rejected (conflation guard)
+  scaled.records.renderSpec.environment.deviceScaleFactor = 1;
+  assert.equal(renderDimensions(scaled), false);
 });
 
 test("Given the latest evaluated source edit, When captures are regenerated through renderer primitives, Then every ordered card and contact sheet is fresh and identity-bound", () => {
