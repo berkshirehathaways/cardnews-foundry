@@ -148,13 +148,13 @@ button,input{font:inherit}
 .sequence-marker[data-state="terminal"]::before{width:var(--space-6)}
 .headline-block{margin-top:var(--space-4);padding-block:var(--space-2)}
 .headline-block h1{margin:var(--mechanic-zero);font-size:var(--headline-size);line-height:var(--headline-leading);
-  letter-spacing:var(--headline-tracking);font-weight:700;word-break:keep-all;overflow-wrap:normal}
+  letter-spacing:var(--headline-tracking);font-weight:700;word-break:keep-all;overflow-wrap:normal;text-wrap:balance;text-spacing-trim:trim-start}
 .headline-block[data-variant="display"] h1{font-size:var(--display-size);line-height:var(--display-leading);letter-spacing:var(--display-tracking)}
 .headline-block[data-script="mixed"] h1{font-size:var(--mixed-headline-size)}
 .headline-block .eyebrow{display:block;margin-bottom:var(--space-2);font-size:var(--caption-size);
   line-height:var(--caption-leading);letter-spacing:var(--caption-tracking);color:var(--color-accent);font-weight:700}
 .body-block,.evidence-block,.quote-block,.callout-block{font-size:var(--body-size);line-height:var(--body-leading);
-  letter-spacing:var(--body-tracking);word-break:keep-all;overflow-wrap:normal}
+  letter-spacing:var(--body-tracking);word-break:keep-all;overflow-wrap:normal;text-wrap:pretty;text-spacing-trim:trim-start}
 .keep-phrase{white-space:nowrap}
 .body-block p,.evidence-block p,.callout-block p{margin:var(--mechanic-zero)}
 .body-block{margin-top:var(--space-4);color:var(--color-text-secondary)}
@@ -173,7 +173,7 @@ button,input{font:inherit}
 .media-frame figcaption{margin-top:var(--space-2);font-size:var(--caption-size);line-height:var(--caption-leading);color:var(--color-text-secondary)}
 .accent-rule{width:var(--mechanic-full);height:var(--stroke-standard);margin:var(--space-4) var(--mechanic-zero);background:var(--color-accent)}
 .stat-block{display:grid;gap:var(--space-1);padding:var(--space-3);border-left:var(--space-1) solid var(--color-accent)}
-.stat-value{font-size:var(--display-size);line-height:var(--display-leading);font-weight:700;color:var(--color-text-primary)}
+.stat-value{font-size:var(--display-size);line-height:var(--display-leading);font-weight:700;color:var(--color-text-primary);font-variant-numeric:tabular-nums}
 .stat-label{font-size:var(--body-size);line-height:var(--body-leading);color:var(--color-text-secondary);
   word-break:keep-all;overflow-wrap:normal}
 .quote-block{margin:var(--space-4) var(--mechanic-zero) var(--mechanic-zero);padding:var(--space-4);
