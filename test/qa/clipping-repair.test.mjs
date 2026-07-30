@@ -25,9 +25,9 @@ const commitRecipeRevision = async ({ workspace, job, storyboardDigest, clipping
     recipe.cards[3].mood =
       "손에서 손으로 관찰 기록이 오래 이어지는 다정하고 역동적이며 세밀한 돌봄의 분위기";
     recipe.cards[3].emphasis = [
-      "발아 날짜와 물 준 횟수",
-      "다음 사람의 화분에 맞는 돌봄 선택",
-      "관찰 기록을 오래 이어 가는 순환",
+      "발아 날짜와 물 준 횟수를 계절 흐름에 따라 빠짐없이 적어 함께 남기는 기록",
+      "다음 사람의 화분과 창가 방향에 두루 맞는 촘촘한 돌봄 선택지를 고르는 기준",
+      "관찰 기록이 손에서 손으로 오래 이어지도록 봉투마다 순환을 설계하는 약속",
     ];
   }
   await writeFile(
