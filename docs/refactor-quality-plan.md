@@ -8,7 +8,7 @@
 - **DONE** R1 `c96b0ad` · R2 `4daa2fd` · R3 `7684b19` · R4(워크스페이스 위생, 레포 밖) · Q1 `a4a8ea1` · Q2 `2f40a9f` · Q3 `5adec4c` · Q4 `d125f35`
 - 검증: fix-loop 6/6, card-geometry 10/10, renderer 11/11, gate-matrix 52/52, contracts 19/19, precondition 3/3, 빠른 스위트 106/106, `tsc --noEmit` 0. 트리 클린.
 - **Q4 결론(렌더-리뷰 루프 수행됨)**: 렌더해 보니 주관 건이 아니라 **객관적 대비 버그**였다 — ink-paper의 어두운 잉크 텍스트가 brightness(.32)로 죽인 이미지 위에 올라가 over-background 헤드라인/본문이 사실상 판독 불가(AA 실패). frozen fixture에 배경 카드가 없어 이 경로가 육안 검증된 적이 없었음. 수정: 테마-canvas 스크림(`--background-scrim`, 90/62/92% 세로 베일) + brightness(.85). **함정 기록**: 커스텀 프로퍼티는 요소별 computed 시점에 내부 `var()`를 즉시 해석하므로 `:root`에 선언하면 테마 블록의 `--color-canvas`가 안 보여 guaranteed-invalid로 죽는다 → 반드시 두 `[data-theme]` 블록 안에 선언.
-- **HOLD** Q5 — 별도 승인 대기.
+- **DONE** Q5 `330bdab` — 2× 디바이스 스케일 지원. 픽셀=CSS치수×deviceScaleFactor로 두 혼동 지점(renderFixture accept + render-dimensions 게이트) 수정. 계약 의미론 못박음: target/spec dimensions=CSS 레이아웃 px(스키마가 1080×1350 const 락), RenderArtifact width/height=출력 PNG 픽셀(=CSS×배율), geometry/safe-area/토큰=CSS px 무변경. dsf=1에선 전 해시·게이트 동일. **production 2× 전환은 render-spec에 `environment.deviceScaleFactor: 2` 오소링(skill 몫)** — frozen 픽스처는 의도적으로 1× 유지. `test:all` 434 그린.
 ## 0. 컨텍스트 (이미 끝난 것 — 다시 하지 말 것)
 
 - 렌더 중간 HTML 미보존(`retainHtml` 기본 off), `cardnews prune` + package 후 auto-prune — 커밋 `62b3453`에 포함.
@@ -72,8 +72,8 @@
 - 안전망 옵션(스킴 완화 시): 최종 PNG의 텍스트 rect 픽셀을 샘플해 AA(4.5:1) 미달 시 fail하는 컨트라스트 게이트. 단 deviceScaleFactor↔픽셀 매핑·결정성 확보가 별도 과제.
 - 검증: 컨트라스트 게이트 그린 + **새 리비전 렌더 육안 before/after 비교(승인 게이트)**.
 
-### Q5. (선택 — 별도 승인 후) 2× 해상도 타겟
-- `deviceScaleFactor: 2` 또는 2160×2700 타겟 프로파일 — IG 재압축 내성↑. 단 `RenderArtifact`의 width/height 검증·계약 다수 접촉 → 승인 없이 착수 금지.
+### Q5. 2× 해상도 — DONE (`330bdab`)
+- 위 실행 결과 참조. 엔진은 이제 임의 deviceScaleFactor(0<x≤4)를 올바르게 래스터한다. production에서 2× 카드를 뽑으려면 render-spec의 `environment.deviceScaleFactor`를 2로 오소링하면 됨(엔진·게이트·계약 전부 대응 완료).
 
 ### 명시적 비목표
 - 폰트 서브셋팅(45MB 인메모리 HTML 축소): `fontDigests`가 계약에 박혀 결정성 재설계 필요 — 별도 프로젝트.
